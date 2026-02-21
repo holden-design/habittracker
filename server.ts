@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,10 +14,10 @@ app.use(cors());
 app.use(express.json());
 
 // Database connection
-const pool = new Pool({
+const pool: Pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://localhost/personalsystems',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+}) as Pool;
 
 // Initialize database tables
 const initDB = async () => {
