@@ -275,6 +275,25 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
+// Database health check
+app.get('/api/health/db', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'connected',
+      database: 'PostgreSQL',
+      timestamp: result.rows[0].now,
+      message: 'Database connection successful'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'disconnected',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      message: 'Database connection failed'
+    });
+  }
+});
+
 // For any other route, serve index.html (for React routing)
 app.use((req: Request, res: Response) => {
   const buildPath = path.join(process.cwd(), 'build/index.html');

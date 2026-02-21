@@ -122,3 +122,92 @@
   color: #666;
   margin-top: 0.25rem;
 }
+
+@media (max-width: 768px) {
+  .month-view {
+    padding: 1rem;
+  }
+
+  .month-grid {
+    margin-bottom: 1.5rem;
+  }
+
+  .day-label {
+    padding: 0.6rem 0.3rem;
+    font-size: 0.65rem;
+  }
+
+  .month-day {
+    min-height: 60px;
+    padding: 0.6rem 0.3rem;
+  }
+
+  .day-number {
+    font-size: 1rem;
+  }
+
+  .day-completion {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.3rem;
+  }
+
+  .month-legend {
+    padding: 1rem;
+  }
+
+  .streaks-grid {
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .month-view {
+    padding: 0.75rem;
+  }
+
+  .month-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .day-label {
+    padding: 0.4rem 0.2rem;
+    font-size: 0.55rem;
+  }
+
+  .month-day {
+    min-height: 50px;
+    padding: 0.4rem 0.2rem;
+  }
+
+  .day-number {
+    font-size: 0.85rem;
+  }
+
+  .day-completion {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .month-legend {
+    padding: 0.75rem;
+  }
+
+  .month-legend h4 {
+    font-size: 0.75rem;
+  }
+
+  .streaks-grid {
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .streak-name {
+    font-size: 0.75rem;
+  }
+
+  .streak-value {
+    font-size: 0.65rem;
+  }
+}
