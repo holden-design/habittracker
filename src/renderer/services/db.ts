@@ -3,6 +3,55 @@ import { Habit, HabitEntry, Note, Idea } from '../types';
 // API URL - uses localhost for development, or window.location.origin for production
 const API_URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:5000';
 
+// Map snake_case DB columns to camelCase TypeScript properties
+function mapEntry(e: any): HabitEntry {
+  return {
+    id: e.id,
+    habitId: e.habit_id || e.habitId,
+    date: new Date(e.date),
+    scheduledTime: e.scheduled_time || e.scheduledTime,
+    actualTime: e.actual_time || e.actualTime,
+    completed: e.completed,
+    completedAt: e.completed_at ? new Date(e.completed_at) : (e.completedAt ? new Date(e.completedAt) : undefined),
+    notes: e.notes,
+  };
+}
+
+function mapHabit(h: any): Habit {
+  return {
+    id: h.id,
+    name: h.name,
+    color: h.color,
+    frequency: h.frequency,
+    customDays: h.custom_days || h.customDays,
+    targetDurationMinutes: h.target_duration_minutes ?? h.targetDurationMinutes,
+    createdAt: new Date(h.created_at || h.createdAt),
+  };
+}
+
+function mapNote(n: any): Note {
+  return {
+    id: n.id,
+    title: n.title,
+    content: n.content,
+    createdAt: new Date(n.created_at || n.createdAt),
+    updatedAt: new Date(n.updated_at || n.updatedAt),
+    pinned: n.pinned,
+  };
+}
+
+function mapIdea(i: any): Idea {
+  return {
+    id: i.id,
+    title: i.title,
+    description: i.description,
+    category: i.category,
+    createdAt: new Date(i.created_at || i.createdAt),
+    updatedAt: new Date(i.updated_at || i.updatedAt),
+    pinned: i.pinned,
+  };
+}
+
 // ===== LOCAL STORAGE HELPERS =====
 const STORAGE_KEYS = {
   habits: 'ps_habits',
@@ -67,7 +116,8 @@ export const getHabits = async (): Promise<Habit[]> => {
     try {
       const response = await fetch(`${API_URL}/api/habits`);
       if (!response.ok) throw new Error('Failed to fetch habits');
-      return await response.json();
+      const data = await response.json();
+      return data.map((h: any) => mapHabit(h));
     } catch (error) {
       console.error('Error fetching habits:', error);
       return getLocal<Habit>(STORAGE_KEYS.habits);
@@ -116,6 +166,19 @@ export const addOrUpdateEntry = async (entry: HabitEntry): Promise<void> => {
   }
 };
 
+export const deleteEntry = async (entryId: string): Promise<void> => {
+  if (await isBackendUp()) {
+    const response = await fetch(`${API_URL}/api/entries/${entryId}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete entry');
+    }
+  } else {
+    const entries = getLocal<HabitEntry>(STORAGE_KEYS.entries).filter((e) => e.id !== entryId);
+    setLocal(STORAGE_KEYS.entries, entries);
+  }
+};
+
 const formatDateForAPI = (date: Date): string => {
   return date.toISOString().split('T')[0];
 };
@@ -127,7 +190,7 @@ export const getEntriesByDate = async (date: Date): Promise<HabitEntry[]> => {
       const response = await fetch(`${API_URL}/api/entries/date/${dateStr}`);
       if (!response.ok) throw new Error('Failed to fetch entries');
       const data = await response.json();
-      return data.map((e: any) => ({ ...e, date: new Date(e.date) }));
+      return data.map((e: any) => mapEntry(e));
     } catch (error) {
       console.error('Error fetching entries:', error);
       return [];
@@ -136,7 +199,7 @@ export const getEntriesByDate = async (date: Date): Promise<HabitEntry[]> => {
   const dateStr = new Date(date).toDateString();
   return getLocal<HabitEntry>(STORAGE_KEYS.entries)
     .filter((e) => new Date(e.date).toDateString() === dateStr)
-    .map((e) => ({ ...e, date: new Date(e.date) }));
+    .map((e) => mapEntry(e));
 };
 
 export const getEntriesByDateRange = async (startDate: Date, endDate: Date): Promise<HabitEntry[]> => {
@@ -147,7 +210,7 @@ export const getEntriesByDateRange = async (startDate: Date, endDate: Date): Pro
       const response = await fetch(`${API_URL}/api/entries/range/${startStr}/${endStr}`);
       if (!response.ok) throw new Error('Failed to fetch entries');
       const data = await response.json();
-      return data.map((e: any) => ({ ...e, date: new Date(e.date) }));
+      return data.map((e: any) => mapEntry(e));
     } catch (error) {
       console.error('Error fetching entries:', error);
       return [];
@@ -160,7 +223,7 @@ export const getEntriesByDateRange = async (startDate: Date, endDate: Date): Pro
       const t = new Date(e.date).getTime();
       return t >= start && t <= end;
     })
-    .map((e) => ({ ...e, date: new Date(e.date) }));
+    .map((e) => mapEntry(e));
 };
 
 export const getEntriesByHabitAndDate = async (habitId: string, date: Date): Promise<HabitEntry[]> => {
@@ -197,7 +260,8 @@ export const getNotes = async (): Promise<Note[]> => {
     try {
       const response = await fetch(`${API_URL}/api/notes`);
       if (!response.ok) throw new Error('Failed to fetch notes');
-      const notes = await response.json();
+      const data = await response.json();
+      const notes = data.map((n: any) => mapNote(n));
       return notes.sort((a: Note, b: Note) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     } catch (error) {
       console.error('Error fetching notes:', error);
@@ -250,7 +314,8 @@ export const getIdeas = async (): Promise<Idea[]> => {
     try {
       const response = await fetch(`${API_URL}/api/ideas`);
       if (!response.ok) throw new Error('Failed to fetch ideas');
-      const ideas = await response.json();
+      const data = await response.json();
+      const ideas = data.map((i: any) => mapIdea(i));
       return ideas.sort((a: Idea, b: Idea) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     } catch (error) {
       console.error('Error fetching ideas:', error);

@@ -41,16 +41,21 @@ const initDB = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS entries (
         id VARCHAR(255) PRIMARY KEY,
-        habit_id VARCHAR(255) NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+        habit_id VARCHAR(255) NOT NULL,
         date DATE NOT NULL,
         scheduled_time VARCHAR(5) NOT NULL,
         actual_time VARCHAR(5),
         completed BOOLEAN NOT NULL DEFAULT false,
         completed_at TIMESTAMP,
+        notes TEXT,
         created_at TIMESTAMP NOT NULL,
         updated_at TIMESTAMP NOT NULL
       )
     `);
+
+    // Migrations for existing databases
+    await pool.query(`ALTER TABLE entries ADD COLUMN IF NOT EXISTS notes TEXT`);
+    await pool.query(`ALTER TABLE entries DROP CONSTRAINT IF EXISTS entries_habit_id_fkey`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS notes (
@@ -111,9 +116,10 @@ app.post('/api/habits', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE habit
+// DELETE habit (and its entries)
 app.delete('/api/habits/:id', async (req: Request, res: Response) => {
   try {
+    await pool.query('DELETE FROM entries WHERE habit_id = $1', [req.params.id]);
     await pool.query('DELETE FROM habits WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (error) {
@@ -154,14 +160,14 @@ app.get('/api/entries/range/:start/:end', async (req: Request, res: Response) =>
 
 // POST/UPDATE entry
 app.post('/api/entries', async (req: Request, res: Response) => {
-  const { id, habitId, date, scheduledTime, actualTime, completed, completedAt, createdAt } = req.body;
+  const { id, habitId, date, scheduledTime, actualTime, completed, completedAt, notes, createdAt } = req.body;
   try {
     const result = await pool.query(
-      `INSERT INTO entries (id, habit_id, date, scheduled_time, actual_time, completed, completed_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (id) DO UPDATE SET actual_time = $5, completed = $6, completed_at = $7, updated_at = NOW()
+      `INSERT INTO entries (id, habit_id, date, scheduled_time, actual_time, completed, completed_at, notes, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (id) DO UPDATE SET scheduled_time = $4, actual_time = $5, completed = $6, completed_at = $7, notes = $8, updated_at = NOW()
        RETURNING *`,
-      [id, habitId, date, scheduledTime, actualTime || null, completed, completedAt || null, createdAt, createdAt]
+      [id, habitId, date, scheduledTime, actualTime || null, completed, completedAt || null, notes || null, createdAt, createdAt]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -356,6 +362,147 @@ app.get('/api/health/db', async (req: Request, res: Response) => {
       error: error instanceof Error ? error.message : 'Unknown error',
       message: 'Database connection failed'
     });
+  }
+});
+
+// ==================== AI / CLAUDE API ====================
+
+// Analyze a plan/note and break it into calendar tasks
+app.post('/api/ai/analyze-plan', async (req: Request, res: Response) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'ANTHROPIC_API_KEY not set. Add it to your .env file.' });
+  }
+
+  const { content, startDate } = req.body;
+  if (!content) {
+    return res.status(400).json({ error: 'No content provided' });
+  }
+
+  const today = startDate || new Date().toISOString().split('T')[0];
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: `You are a productivity assistant. Analyze this plan and break it into specific, actionable calendar tasks.
+
+Today's date is ${today}. Schedule tasks starting from today, spreading them out reasonably (not everything on one day). Consider task dependencies — things that need to happen first should be scheduled first.
+
+For each task, provide:
+- title: short actionable title (e.g. "Research venue options")
+- date: YYYY-MM-DD format
+- time: suggested time in HH:MM 24h format (spread throughout the day reasonably — mornings for focus work, afternoons for calls/meetings)
+- durationMinutes: estimated duration (15, 30, 45, 60, 90, 120)
+- notes: brief context or tip
+
+Respond ONLY with valid JSON in this exact format, no other text:
+{
+  "summary": "Brief one-line summary of the plan",
+  "tasks": [
+    { "title": "...", "date": "YYYY-MM-DD", "time": "HH:MM", "durationMinutes": 60, "notes": "..." }
+  ]
+}
+
+Here is the plan to analyze:
+
+${content}`
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Claude API error:', errorData);
+      return res.status(response.status).json({ error: `Claude API error: ${response.statusText}` });
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    // Parse the JSON from Claude's response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.status(500).json({ error: 'Could not parse AI response' });
+    }
+
+    const result = JSON.parse(jsonMatch[0]);
+    res.json(result);
+  } catch (error) {
+    console.error('AI analyze-plan error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'AI request failed' });
+  }
+});
+
+// Get habit nudges — which habits haven't been done today
+app.post('/api/ai/habit-nudge', async (req: Request, res: Response) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'ANTHROPIC_API_KEY not set. Add it to your .env file.' });
+  }
+
+  const { habits, completedToday, currentTime } = req.body;
+  if (!habits || !Array.isArray(habits)) {
+    return res.status(400).json({ error: 'No habits provided' });
+  }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: `You are a supportive habit coach. The current time is ${currentTime || 'afternoon'}.
+
+Here are all my habits: ${JSON.stringify(habits.map((h: any) => ({ name: h.name, id: h.id })))}
+
+These ones are already completed today: ${JSON.stringify(completedToday || [])}
+
+For each UNCOMPLETED habit, give a brief encouraging nudge with a suggested time to do it (considering the current time of day). Be warm but concise — 1 sentence max per habit.
+
+Respond ONLY with valid JSON array, no other text:
+[
+  { "habitName": "...", "habitId": "...", "suggestedTime": "HH:MM", "message": "..." }
+]`
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Claude API error:', errorData);
+      return res.status(response.status).json({ error: `Claude API error: ${response.statusText}` });
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.status(500).json({ error: 'Could not parse AI response' });
+    }
+
+    const result = JSON.parse(jsonMatch[0]);
+    res.json(result);
+  } catch (error) {
+    console.error('AI habit-nudge error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'AI request failed' });
   }
 });
 

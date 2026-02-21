@@ -53,3 +53,24 @@ export interface Idea {
   updatedAt: Date;
   pinned?: boolean;
 }
+
+// AI Plan Analysis
+export interface PlanTask {
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  durationMinutes: number;
+  notes?: string;
+}
+
+export interface AIPlanResult {
+  tasks: PlanTask[];
+  summary: string;
+}
+
+export interface AIHabitNudge {
+  habitName: string;
+  habitId: string;
+  suggestedTime: string;
+  message: string;
+}

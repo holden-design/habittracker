@@ -1,6 +1,6 @@
 import React from 'react';
 import { Habit, HabitEntry } from '../types';
-import { calculateStreak, generateId } from '../services/utils';
+import { generateId } from '../services/utils';
 import './WeekView.css';
 
 interface WeekViewProps {
@@ -12,8 +12,15 @@ interface WeekViewProps {
 }
 
 export const WeekView: React.FC<WeekViewProps> = ({ startDate, habits, entries, onDateSelect, onEntryUpdate }) => {
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(startDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Build 14 days: previous week + current week
+  const prevWeekStart = new Date(startDate);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const date = new Date(prevWeekStart);
     date.setDate(date.getDate() + i);
     return date;
   });
@@ -34,7 +41,7 @@ export const WeekView: React.FC<WeekViewProps> = ({ startDate, habits, entries, 
     });
   };
 
-  const getCompletionForHabit = (habit: Habit, date: Date): boolean => {
+  const isCompleted = (habit: Habit, date: Date): boolean => {
     const entry = getEntryForHabit(habit, date);
     return entry ? entry.completed : false;
   };
@@ -58,65 +65,74 @@ export const WeekView: React.FC<WeekViewProps> = ({ startDate, habits, entries, 
     }
   };
 
-  const habitStreak = (habit: Habit) => {
-    return calculateStreak(entries.filter((e) => e.habitId === habit.id), habit);
+  const isToday = (date: Date): boolean => {
+    return date.toDateString() === today.toDateString();
   };
+
+  const isPrevWeek = (index: number): boolean => index < 7;
+
+  // Header label
+  const prevStart = days[0];
+  const prevEnd = days[6];
+  const currStart = days[7];
+  const currEnd = days[13];
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
     <div className="week-view">
       <div className="week-header">
-        <h3>
-          Week of {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </h3>
+        <h3>2 Week View</h3>
+        <div className="week-range-labels">
+          <span className="prev-week-label">← {fmt(prevStart)} – {fmt(prevEnd)}</span>
+          <span className="curr-week-label">{fmt(currStart)} – {fmt(currEnd)} →</span>
+        </div>
       </div>
 
-      <div className="week-grid">
-        <div className="week-habits-column">
-          <div className="habit-header-cell">Habit</div>
-          {habits.map((habit) => (
-            <div key={habit.id} className="habit-cell">
-              <div
-                className="habit-color-dot"
-                style={{ backgroundColor: habit.color }}
-              />
-              <div className="habit-info">
-                <div className="habit-name">{habit.name}</div>
-                <div className="habit-streak">🔥 {habitStreak(habit)}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="week-grid-wrapper">
+        <div className="week-grid" style={{ gridTemplateColumns: `100px repeat(14, 1fr)` }}>
+          {/* Corner cell */}
+          <div className="corner-cell" />
 
-        {days.map((date) => (
-          <div key={date.toISOString()} className="week-day-column">
+          {/* Day headers */}
+          {days.map((date, i) => (
             <div
-              className="day-header-cell"
+              key={date.toISOString()}
+              className={`day-header-cell ${isToday(date) ? 'today' : ''} ${isPrevWeek(i) ? 'prev-week' : ''} ${i === 7 ? 'week-divider' : ''}`}
               onClick={() => onDateSelect(date)}
-              style={{ cursor: 'pointer' }}
             >
               <div className="day-name">
-                {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                {date.toLocaleDateString('en-US', { weekday: 'narrow' })}
               </div>
               <div className="day-date">{date.getDate()}</div>
             </div>
-            {habits.map((habit) => {
-              const completed = getCompletionForHabit(habit, date);
-              return (
-                <div
-                  key={`${habit.id}-${date.toISOString()}`}
-                  className={`completion-cell ${completed ? 'completed' : ''}`}
-                  onClick={() => toggleCompletion(habit, date)}
-                  style={{
-                    backgroundColor: completed ? habit.color : '#f5f5f5',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {completed && <div className="checkmark">✓</div>}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+          ))}
+
+          {/* Habit rows */}
+          {habits.map((habit) => (
+            <React.Fragment key={habit.id}>
+              <div className="habit-cell">
+                <div className="habit-color-dot" style={{ backgroundColor: habit.color }} />
+                <span className="habit-name">{habit.name}</span>
+              </div>
+              {days.map((date, i) => {
+                const done = isCompleted(habit, date);
+                return (
+                  <div
+                    key={`${habit.id}-${date.toISOString()}`}
+                    className={`check-cell ${done ? 'done' : ''} ${isToday(date) ? 'today-col' : ''} ${isPrevWeek(i) ? 'prev-week' : ''} ${i === 7 ? 'week-divider' : ''}`}
+                    onClick={() => toggleCompletion(habit, date)}
+                  >
+                    {done ? (
+                      <div className="check-mark" style={{ backgroundColor: habit.color }}>✓</div>
+                    ) : (
+                      <div className="check-empty" />
+                    )}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
     </div>
   );

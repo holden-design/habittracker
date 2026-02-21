@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
-import { Habit, HabitEntry, Note, Idea } from './types';
-import { initDB, addHabit, getHabits, addOrUpdateEntry, getEntriesByDate, getEntriesByDateRange, deleteHabit, addOrUpdateNote, getNotes, deleteNote, addOrUpdateIdea, getIdeas, deleteIdea } from './services/db';
+import { Habit, HabitEntry, Note, Idea, PlanTask } from './types';
+import { initDB, addHabit, getHabits, addOrUpdateEntry, getEntriesByDate, getEntriesByDateRange, deleteHabit, deleteEntry, addOrUpdateNote, getNotes, deleteNote, addOrUpdateIdea, getIdeas, deleteIdea } from './services/db';
 import { shouldHabitRunToday, generateId, getWeekStart } from './services/utils';
 import { HabitForm } from './components/HabitForm';
 import { DailyView } from './components/DailyView';
@@ -45,9 +45,11 @@ function App() {
           loadedEntries = await getEntriesByDate(currentDate);
         } else if (view === 'week') {
           const weekStart = getWeekStart(currentDate);
+          const prevWeekStart = new Date(weekStart);
+          prevWeekStart.setDate(prevWeekStart.getDate() - 7);
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekEnd.getDate() + 7);
-          loadedEntries = await getEntriesByDateRange(weekStart, weekEnd);
+          loadedEntries = await getEntriesByDateRange(prevWeekStart, weekEnd);
         } else if (view === 'month') {
           const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
           const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -128,6 +130,16 @@ function App() {
     }
   };
 
+  const handleDeleteHabit = async (habitId: string) => {
+    try {
+      await deleteHabit(habitId);
+      setHabits((prev) => prev.filter((h) => h.id !== habitId));
+      setEntries((prev) => prev.filter((e) => e.habitId !== habitId));
+    } catch (error) {
+      console.error('Failed to delete habit:', error);
+    }
+  };
+
   const handleEntryUpdate = async (entry: HabitEntry) => {
     try {
       await addOrUpdateEntry(entry);
@@ -145,14 +157,39 @@ function App() {
 
   const handleEntryDelete = async (entryId: string) => {
     try {
+      await deleteEntry(entryId);
       setEntries((prev) => prev.filter((e) => e.id !== entryId));
     } catch (error) {
       console.error('Failed to delete entry:', error);
     }
   };
 
-  const handleDateChange = (date: Date) => {
+  const handleDateChange = async (date: Date) => {
     setCurrentDate(date);
+    // Switch to daily view and load entries for the selected date
+    setView('daily');
+    let dayEntries = await getEntriesByDate(date);
+
+    // Auto-create entries for habits that should run on this day
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    for (const habit of habits) {
+      if (shouldHabitRunToday(habit, date)) {
+        const hasEntry = dayEntries.some((e) => e.habitId === habit.id);
+        if (!hasEntry) {
+          const newEntry: HabitEntry = {
+            id: generateId(),
+            habitId: habit.id,
+            date: dayStart,
+            scheduledTime: '09:00',
+            completed: false,
+          };
+          await addOrUpdateEntry(newEntry);
+          dayEntries = [...dayEntries, newEntry];
+        }
+      }
+    }
+    setEntries(dayEntries);
   };
 
   const handleAddNote = async (note: Note) => {
@@ -213,18 +250,56 @@ function App() {
     }
   };
 
+  // AI: Convert plan tasks into calendar entries
+  const handleAddCalendarTasks = async (tasks: PlanTask[]) => {
+    for (const task of tasks) {
+      const entry: HabitEntry = {
+        id: generateId(),
+        habitId: `plan-${generateId()}`, // one-off task, no real habit
+        date: new Date(task.date + 'T00:00:00'),
+        scheduledTime: task.time,
+        completed: false,
+        notes: task.title + (task.notes ? ` — ${task.notes}` : ''),
+      };
+      await handleEntryUpdate(entry);
+    }
+  };
+
   const handleViewChange = async (newView: ViewType) => {
     setView(newView);
     const dateToUse = newView === 'month' ? new Date(currentDate.getFullYear(), currentDate.getMonth(), 1) : currentDate;
 
     if (newView === 'daily') {
-      const dayEntries = await getEntriesByDate(dateToUse);
+      let dayEntries = await getEntriesByDate(dateToUse);
+
+      // Auto-create entries for habits that should run on this day
+      const dayStart = new Date(dateToUse);
+      dayStart.setHours(0, 0, 0, 0);
+      for (const habit of habits) {
+        if (shouldHabitRunToday(habit, dateToUse)) {
+          const hasEntry = dayEntries.some((e) => e.habitId === habit.id);
+          if (!hasEntry) {
+            const newEntry: HabitEntry = {
+              id: generateId(),
+              habitId: habit.id,
+              date: dayStart,
+              scheduledTime: '09:00',
+              completed: false,
+            };
+            await addOrUpdateEntry(newEntry);
+            dayEntries = [...dayEntries, newEntry];
+          }
+        }
+      }
+
       setEntries(dayEntries);
     } else if (newView === 'week') {
       const weekStart = getWeekStart(dateToUse);
+      const prevWeekStart = new Date(weekStart);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 7);
-      const weekEntries = await getEntriesByDateRange(weekStart, weekEnd);
+      const weekEntries = await getEntriesByDateRange(prevWeekStart, weekEnd);
       setEntries(weekEntries);
     } else if (newView === 'month') {
       const monthStart = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), 1);
@@ -333,6 +408,43 @@ function App() {
               ))}
             </div>
           </div>
+
+          {view === 'daily' && (
+            <div className="desktop-todays-habits">
+              <h3>Today's Habits</h3>
+              {todaysHabits.length === 0 && (
+                <p className="no-habits-msg">No habits scheduled for today</p>
+              )}
+              {todaysHabits.map((habit) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const entry = entries.find(
+                  (e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString()
+                );
+                const isCompleted = entry?.completed ?? false;
+
+                return (
+                  <label key={habit.id} className="desktop-habit-check">
+                    <input
+                      type="checkbox"
+                      checked={isCompleted}
+                      onChange={() => {
+                        if (entry) {
+                          handleEntryUpdate({
+                            ...entry,
+                            completed: !entry.completed,
+                            completedAt: !entry.completed ? new Date() : undefined,
+                          });
+                        }
+                      }}
+                    />
+                    <div className="desktop-habit-check-color" style={{ backgroundColor: habit.color }} />
+                    <span className={isCompleted ? 'completed' : ''}>{habit.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </nav>
 
         <main className="main-layout">
@@ -344,6 +456,7 @@ function App() {
                 entries={entries}
                 onEntryUpdate={handleEntryUpdate}
                 onEntryDelete={handleEntryDelete}
+                onDeleteHabit={handleDeleteHabit}
               />
             )}
             {view === 'week' && (
@@ -362,6 +475,7 @@ function App() {
                 habits={habits}
                 entries={entries}
                 onDateSelect={handleDateChange}
+                onEntryUpdate={handleEntryUpdate}
               />
             )}
           </div>
@@ -376,12 +490,15 @@ function App() {
             <NotesView
               notes={notes}
               ideas={ideas}
+              habits={habits}
+              entries={entries}
               onAddNote={handleAddNote}
               onUpdateNote={handleUpdateNote}
               onDeleteNote={handleDeleteNote}
               onAddIdea={handleAddIdea}
               onUpdateIdea={handleUpdateIdea}
               onDeleteIdea={handleDeleteIdea}
+              onAddCalendarTasks={handleAddCalendarTasks}
             />
           </div>
         </main>
@@ -406,6 +523,7 @@ function App() {
               entries={entries}
               onEntryUpdate={handleEntryUpdate}
               onEntryDelete={handleEntryDelete}
+              onDeleteHabit={handleDeleteHabit}
             />
           )}
           {view === 'week' && (
@@ -424,11 +542,13 @@ function App() {
               habits={habits}
               entries={entries}
               onDateSelect={handleDateChange}
+              onEntryUpdate={handleEntryUpdate}
             />
           )}
         </div>
 
-        {/* Habit List with Checkboxes */}
+        {/* Habit List with Checkboxes - only in daily view */}
+        {view === 'daily' && (
         <div className="mobile-habit-list">
           <h3 className="mobile-habit-list-title">Today's Habits</h3>
           {todaysHabits.length === 0 && (
@@ -443,35 +563,73 @@ function App() {
             const isCompleted = entry?.completed ?? false;
 
             return (
-              <div
-                key={habit.id}
-                className={`mobile-habit-item ${isCompleted ? 'completed' : ''}`}
-                onClick={() => handleMobileToggle(habit)}
-              >
-                <div className="mobile-habit-check">
-                  <div
-                    className="mobile-checkbox"
-                    style={{
-                      borderColor: habit.color,
-                      backgroundColor: isCompleted ? habit.color : 'transparent',
+              <div key={habit.id} className="mobile-habit-swipe-container">
+                <div className="mobile-habit-delete-bg">
+                  <button
+                    className="mobile-habit-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteHabit(habit.id);
                     }}
                   >
-                    {isCompleted && <span className="checkmark">✓</span>}
-                  </div>
-                </div>
-                <div className="mobile-habit-info">
-                  <span className="mobile-habit-name" style={{ color: isCompleted ? '#999' : '#333' }}>
-                    {habit.name}
-                  </span>
+                    🗑 Delete
+                  </button>
                 </div>
                 <div
-                  className="mobile-habit-color-dot"
-                  style={{ backgroundColor: habit.color }}
-                />
+                  className="mobile-habit-item"
+                  data-habit-id={habit.id}
+                  onClick={() => handleMobileToggle(habit)}
+                  onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    const el = e.currentTarget;
+                    el.dataset.startX = String(touch.clientX);
+                    el.dataset.currentX = '0';
+                  }}
+                  onTouchMove={(e) => {
+                    const touch = e.touches[0];
+                    const el = e.currentTarget;
+                    const startX = parseFloat(el.dataset.startX || '0');
+                    const diff = touch.clientX - startX;
+                    const clampedDiff = Math.max(-100, Math.min(0, diff));
+                    el.style.transform = `translateX(${clampedDiff}px)`;
+                    el.dataset.currentX = String(clampedDiff);
+                  }}
+                  onTouchEnd={(e) => {
+                    const el = e.currentTarget;
+                    const currentX = parseFloat(el.dataset.currentX || '0');
+                    if (currentX < -50) {
+                      el.style.transform = 'translateX(-100px)';
+                    } else {
+                      el.style.transform = 'translateX(0)';
+                    }
+                  }}
+                >
+                  <div className="mobile-habit-check">
+                    <div
+                      className="mobile-checkbox"
+                      style={{
+                        borderColor: habit.color,
+                        backgroundColor: isCompleted ? habit.color : 'transparent',
+                      }}
+                    >
+                      {isCompleted && <span className="checkmark">✓</span>}
+                    </div>
+                  </div>
+                  <div className="mobile-habit-info">
+                    <span className="mobile-habit-name" style={{ color: isCompleted ? '#999' : '#333' }}>
+                      {habit.name}
+                    </span>
+                  </div>
+                  <div
+                    className="mobile-habit-color-dot"
+                    style={{ backgroundColor: habit.color }}
+                  />
+                </div>
               </div>
             );
           })}
         </div>
+        )}
 
         {/* Add Habit Button */}
         <button className="mobile-add-habit" onClick={() => setShowForm(true)}>
@@ -511,12 +669,15 @@ function App() {
               <NotesView
                 notes={notes}
                 ideas={ideas}
+                habits={habits}
+                entries={entries}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
                 onAddIdea={handleAddIdea}
                 onUpdateIdea={handleUpdateIdea}
                 onDeleteIdea={handleDeleteIdea}
+                onAddCalendarTasks={handleAddCalendarTasks}
               />
             </div>
           </div>
