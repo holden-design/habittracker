@@ -1,0 +1,342 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  background: #fafafa;
+}
+
+.App {
+  display: flex;
+  height: 100vh;
+  background: white;
+}
+
+.App.loading {
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.sidebar {
+  width: 280px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.logo h1 {
+  margin: 0 0 2rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.view-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.view-btn.active {
+  background: white;
+  color: #667eea;
+  border-color: white;
+}
+
+.actions {
+  margin-bottom: 2rem;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: white;
+  color: #667eea;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.habits-summary {
+  margin-top: auto;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.habits-summary h3 {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.habits-list-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.habit-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.habit-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.main-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 4px minmax(250px, 1fr);
+  gap: 0;
+  overflow: hidden;
+}
+
+.calendar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.resize-handle {
+  width: 4px;
+  background: #ddd;
+  cursor: col-resize;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.resize-handle:hover {
+  background: #999;
+}
+
+.resize-handle.dragging {
+  background: #667eea;
+}
+
+.notes-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+  border-left: 1px solid #eee;
+}
+
+.mobile-notes-toggle {
+  display: none;
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 220px;
+    padding: 1.5rem 1rem;
+  }
+
+  .logo h1 {
+    font-size: 1.2rem;
+    margin: 0 0 1.5rem 0;
+  }
+
+  .view-btn {
+    font-size: 0.75rem;
+    padding: 0.6rem;
+  }
+
+  .btn-primary {
+    font-size: 0.85rem;
+  }
+
+  .main-layout {
+    grid-template-columns: 1fr 3px minmax(200px, 350px);
+  }
+}
+
+@media (max-width: 768px) {
+  .App {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    height: auto;
+    order: -1;
+  }
+
+  .logo h1 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .view-toggle {
+    margin-bottom: 0;
+    gap: 0.25rem;
+  }
+
+  .view-btn {
+    font-size: 0.7rem;
+    padding: 0.5rem;
+  }
+
+  .actions {
+    margin-bottom: 0;
+  }
+
+  .btn-primary {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .habits-summary {
+    display: none;
+  }
+
+  .main-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    flex: 1;
+  }
+
+  .calendar-container {
+    min-height: 400px;
+    position: relative;
+  }
+
+  .mobile-notes-toggle {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .mobile-notes-toggle:hover {
+    background: #5568d3;
+  }
+
+  .notes-panel {
+    display: none;
+    width: 100% !important;
+    min-height: 300px;
+    border-left: none;
+    border-top: 1px solid #eee;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 99;
+    max-height: 60vh;
+  }
+
+  .notes-panel.mobile-open {
+    display: flex;
+  }
+
+  .resize-handle {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.75rem;
+  }
+
+  .logo h1 {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .view-toggle {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .view-btn {
+    font-size: 0.65rem;
+    padding: 0.4rem;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .btn-primary {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-container {
+    min-height: 300px;
+  }
+
+  .notes-panel {
+    min-height: 250px;
+  }
+}

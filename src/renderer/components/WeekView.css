@@ -1,0 +1,130 @@
+.week-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+}
+
+.week-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
+  background: #f9f9f9;
+}
+
+.week-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: 200px repeat(7, 1fr);
+  gap: 1px;
+  padding: 1rem;
+  overflow-x: auto;
+  background: #ddd;
+  flex: 1;
+}
+
+.week-habits-column {
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.habit-header-cell {
+  padding: 1rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  background: #f9f9f9;
+  text-align: center;
+  border-right: 1px solid #eee;
+}
+
+.habit-cell {
+  padding: 0.75rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  border-right: 1px solid #eee;
+}
+
+.habit-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.habit-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.habit-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.habit-streak {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+.week-day-column {
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.day-header-cell {
+  padding: 1rem 0.5rem;
+  font-weight: 600;
+  text-align: center;
+  background: #f9f9f9;
+  border-bottom: 1px solid #eee;
+}
+
+.day-name {
+  font-size: 0.8rem;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.day-date {
+  font-size: 1.25rem;
+  color: #333;
+  margin-top: 0.25rem;
+}
+
+.completion-cell {
+  flex: 1;
+  padding: 0.75rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 50px;
+}
+
+.completion-cell:hover {
+  opacity: 0.85;
+}
+
+.checkmark {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
