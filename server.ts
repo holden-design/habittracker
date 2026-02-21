@@ -267,10 +267,18 @@ app.delete('/api/ideas/:id', async (req: Request, res: Response) => {
 
 // ==================== STATIC FILES ====================
 
-// Serve React build in production
-const buildPath = path.join(process.cwd(), 'build');
-console.log(`📁 Serving static files from: ${buildPath}`);
-app.use(express.static(buildPath));
+// Serve React build in production  
+// Try multiple path variations to handle different environments
+let buildDir = path.join(process.cwd(), 'build');
+if (!require('fs').existsSync(buildDir)) {
+  buildDir = path.join(__dirname, '../build');
+}
+if (!require('fs').existsSync(buildDir)) {
+  buildDir = path.join(__dirname, '../../build');
+}
+console.log(`📁 Serving static files from: ${buildDir}`);
+console.log(`   Exists: ${require('fs').existsSync(buildDir)}`);
+app.use(express.static(buildDir));
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
