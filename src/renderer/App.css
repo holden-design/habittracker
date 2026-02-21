@@ -16,7 +16,8 @@ body {
 .App {
   display: flex;
   height: 100vh;
-  background: white;
+  background: #ffffff;
+  color: #333;
 }
 
 .App.loading {
@@ -35,6 +36,7 @@ body {
   padding: 2rem 1.5rem;
   overflow-y: auto;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  border-right: 1px solid #667eea;
 }
 
 .logo h1 {
