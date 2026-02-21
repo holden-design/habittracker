@@ -22,6 +22,9 @@ const pool = new Pool({
 // Initialize database tables
 const initDB = async () => {
   try {
+    // Check if we can connect
+    await pool.query('SELECT 1');
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS habits (
         id VARCHAR(255) PRIMARY KEY,
@@ -75,6 +78,7 @@ const initDB = async () => {
     console.log('✅ Database tables initialized');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
+    throw error;
   }
 };
 
@@ -264,18 +268,34 @@ app.delete('/api/ideas/:id', async (req: Request, res: Response) => {
 // ==================== STATIC FILES ====================
 
 // Serve React build in production
-app.use(express.static(path.join(__dirname, '../build')));
+app.use(express.static(path.join(process.cwd(), 'build')));
+
+// Health check
+app.get('/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
 
 // For any other route, serve index.html (for React routing)
-app.get("*", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, '../build/index.html'));
+app.use((req: Request, res: Response) => {
+  const buildPath = path.join(process.cwd(), 'build/index.html');
+  console.log(`Serving: ${buildPath}`);
+  res.sendFile(buildPath);
 });
 
 // ==================== START SERVER ====================
 
-initDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📍 Access at http://localhost:${PORT}`);
+initDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📍 Access at http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.warn(`⚠️  Database connection failed, but server starting anyway:`);
+    console.warn(`   ${err.message}`);
+    console.log(`🚀 Server running on port ${PORT} (database offline)`);
+    app.listen(PORT, () => {
+      console.log(`📍 Access at http://localhost:${PORT}`);
+    });
   });
-});
