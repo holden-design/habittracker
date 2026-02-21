@@ -9,13 +9,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  padding-top: 1rem;
+  padding: 0;
   background: #fafafa;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .App {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
+  height: 100%;
   background: #ffffff;
   color: #333;
 }
@@ -205,6 +208,8 @@ body {
 @media (max-width: 768px) {
   .App {
     flex-direction: column;
+    min-height: auto;
+    height: auto;
   }
 
   .sidebar {
@@ -212,9 +217,10 @@ body {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 0.75rem;
     height: auto;
     order: -1;
+    flex-shrink: 0;
   }
 
   .logo h1 {
@@ -248,12 +254,14 @@ body {
   .main-layout {
     grid-template-columns: 1fr;
     height: auto;
-    flex: 1;
+    flex: 1 1 auto;
+    overflow: hidden;
   }
 
   .calendar-container {
-    min-height: 400px;
+    min-height: 300px;
     position: relative;
+    overflow-y: auto;
   }
 
   .mobile-notes-toggle {
