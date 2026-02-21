@@ -268,7 +268,6 @@ app.delete('/api/ideas/:id', async (req: Request, res: Response) => {
 // ==================== STATIC FILES ====================
 
 // Serve React build in production  
-// Try multiple path variations to handle different environments
 let buildDir = path.join(process.cwd(), 'build');
 if (!require('fs').existsSync(buildDir)) {
   buildDir = path.join(__dirname, '../build');
@@ -276,9 +275,65 @@ if (!require('fs').existsSync(buildDir)) {
 if (!require('fs').existsSync(buildDir)) {
   buildDir = path.join(__dirname, '../../build');
 }
-console.log(`📁 Serving static files from: ${buildDir}`);
-console.log(`   Exists: ${require('fs').existsSync(buildDir)}`);
-app.use(express.static(buildDir));
+
+const buildExists = require('fs').existsSync(buildDir);
+console.log(`📁 Build directory: ${buildDir}`);
+console.log(`   Exists: ${buildExists}`);
+
+if (buildExists) {
+  app.use(express.static(buildDir));
+} else {
+  console.warn('⚠️  Build folder not found, serving minimal HTML');
+  // Fallback: serve minimal HTML from server if build folder missing
+  app.get('/', (req: Request, res: Response) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Personal Systems</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafafa; color: #333; }
+          .sidebar { width: 280px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; min-height: 100vh; }
+          .sidebar h1 { font-size: 1.5rem; margin-bottom: 2rem; }
+          .main { flex: 1; padding: 2rem; }
+          .app { display: flex; min-height: 100vh; }
+          h2 { color: #667eea; margin: 2rem 0 1rem; }
+          p { margin: 1rem 0; }
+          .error { color: #d32f2f; padding: 1rem; background: #ffebee; border-radius: 4px; margin: 1rem 0; }
+          .code { background: #f5f5f5; padding: 0.5rem 1rem; border-radius: 4px; font-family: monospace; font-size: 0.9rem; }
+        </style>
+      </head>
+      <body>
+        <div class="app">
+          <div class="sidebar">
+            <h1>Personal Systems</h1>
+            <p>Habit Tracker</p>
+          </div>
+          <div class="main">
+            <h2>⚠️ Build Issue Detected</h2>
+            <p>The React app build folder was not found, but the server is running!</p>
+            <div class="error">
+              <p><strong>Status:</strong> Server is online and API is working</p>
+              <p><strong>Problem:</strong> Static React app not found at: <code class="code">${buildDir}</code></p>
+            </div>
+            <h2>Next Steps:</h2>
+            <ol style="margin: 1rem 0 1rem 2rem;">
+              <li>Make sure <code class="code">npm run build</code> completes successfully</li>
+              <li>Verify <code class="code">build/</code> folder exists locally</li>
+              <li>Check Railway deployment logs</li>
+              <li>Rebuild the deployment</li>
+            </ol>
+            <h2>Check API:</h2>
+            <p><a href="/api/health" style="color: #667eea;">Test API Health</a></p>
+            <p><a href="/api/health/db" style="color: #667eea;">Test Database Connection</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+  });
+}
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

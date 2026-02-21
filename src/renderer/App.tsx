@@ -11,6 +11,38 @@ import { NotesView } from './components/NotesView';
 
 type ViewType = 'daily' | 'week' | 'month';
 
+// Error boundary for React
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('React Error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', color: '#d32f2f', background: '#ffebee' }}>
+          <h2>Application Error</h2>
+          <p>{this.state.error?.message}</p>
+          <details>
+            <summary>Stack Trace</summary>
+            <pre style={{ fontSize: '0.8rem', overflow: 'auto' }}>{this.state.error?.stack}</pre>
+          </details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
@@ -26,6 +58,11 @@ function App() {
   });
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const [showNotesPanelMobile, setShowNotesPanelMobile] = useState(false);
+
+  // Log that app is starting
+  useEffect(() => {
+    console.log('✅ App component mounted');
+  }, []);
 
   // Initialize DB and load data
   useEffect(() => {
@@ -355,4 +392,10 @@ function App() {
   );
 }
 
-export default App;
+export default function AppWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
