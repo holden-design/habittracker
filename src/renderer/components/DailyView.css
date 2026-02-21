@@ -298,9 +298,12 @@
   height: 2px;
   background: #667eea;
   border-radius: 1px;
-  position: relative;
-  margin: 4px 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
   box-shadow: 0 0 6px rgba(102, 126, 234, 0.5);
+  pointer-events: none;
 }
 
 .drop-indicator::before {
@@ -450,6 +453,97 @@
   background: rgba(255, 255, 255, 0.4);
   transform: scale(1.15);
 }
+
+/* Drag handle */
+.entry-drag-handle {
+  cursor: grab;
+  opacity: 0.5;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  user-select: none;
+  padding: 0 2px;
+  letter-spacing: -1px;
+  transition: opacity 0.15s ease;
+}
+
+.entry-card:hover .entry-drag-handle {
+  opacity: 0.9;
+}
+
+.entry-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Complete button on entry card */
+.entry-complete-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.entry-complete-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: white;
+  color: white;
+}
+
+.entry-complete-btn.done {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: white;
+  color: white;
+  font-weight: bold;
+}
+
+/* Drag ghost */
+.drag-ghost {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
+.drag-ghost-time {
+  font-size: 0.7rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Prevent text selection during drag */
+.daily-view.dragging-active {
+  user-select: none;
+}
+
+.hour-entries {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+}
+
 /* Mobile Responsive */
 @media (max-width: 1024px) {
   .daily-content {
