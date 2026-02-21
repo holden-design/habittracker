@@ -1,8 +1,8 @@
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
+import * as express from 'express';
+import * as cors from 'cors';
+import * as path from 'path';
 import { Pool, PoolClient } from 'pg';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
