@@ -268,7 +268,9 @@ app.delete('/api/ideas/:id', async (req: Request, res: Response) => {
 // ==================== STATIC FILES ====================
 
 // Serve React build in production
-app.use(express.static(path.join(__dirname, '../build')));
+const buildPath = path.join(process.cwd(), 'build');
+console.log(`📁 Serving static files from: ${buildPath}`);
+app.use(express.static(buildPath));
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
