@@ -20,14 +20,15 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   return false;
 };
 
-export const sendHabitNotification = async (habitName: string, scheduledTime: string) => {
+export const sendMissedHabitNotification = async (habitName: string, scheduledTime: string) => {
   const hasPermission = await requestNotificationPermission();
   
   if (hasPermission) {
-    new Notification('Habit Added', {
-      body: `${habitName} scheduled for ${scheduledTime}`,
-      icon: '📋',
-      requireInteraction: false,
+    new Notification('⏰ Missed Habit Reminder', {
+      body: `${habitName} was scheduled for ${scheduledTime}. Don't forget to complete it!`,
+      icon: '⏰',
+      requireInteraction: true,
+      tag: `missed-${habitName}`,
     });
   }
 };

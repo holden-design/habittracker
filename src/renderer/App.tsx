@@ -11,38 +11,6 @@ import { NotesView } from './components/NotesView';
 
 type ViewType = 'daily' | 'week' | 'month';
 
-// Error boundary for React
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error) {
-    console.error('React Error:', error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '2rem', color: '#d32f2f', background: '#ffebee' }}>
-          <h2>Application Error</h2>
-          <p>{this.state.error?.message}</p>
-          <details>
-            <summary>Stack Trace</summary>
-            <pre style={{ fontSize: '0.8rem', overflow: 'auto' }}>{this.state.error?.stack}</pre>
-          </details>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 function App() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
@@ -51,18 +19,13 @@ function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<ViewType>('daily');
   const [showForm, setShowForm] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notesPanelWidth, setNotesPanelWidth] = useState(() => {
     const saved = localStorage.getItem('notesPanelWidth');
     return saved ? parseInt(saved, 10) : 400;
   });
   const [isDraggingResize, setIsDraggingResize] = useState(false);
-  const [showNotesPanelMobile, setShowNotesPanelMobile] = useState(false);
-
-  // Log that app is starting
-  useEffect(() => {
-    console.log('✅ App component mounted');
-  }, []);
 
   // Initialize DB and load data
   useEffect(() => {
@@ -72,28 +35,47 @@ function App() {
         const loadedHabits = await getHabits();
         setHabits(loadedHabits);
 
-        // Load notes and ideas
         const loadedNotes = await getNotes();
         setNotes(loadedNotes);
         const loadedIdeas = await getIdeas();
         setIdeas(loadedIdeas);
 
-        // Load entries for current view
+        let loadedEntries: HabitEntry[] = [];
         if (view === 'daily') {
-          const dayEntries = await getEntriesByDate(currentDate);
-          setEntries(dayEntries);
+          loadedEntries = await getEntriesByDate(currentDate);
         } else if (view === 'week') {
           const weekStart = getWeekStart(currentDate);
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekEnd.getDate() + 7);
-          const weekEntries = await getEntriesByDateRange(weekStart, weekEnd);
-          setEntries(weekEntries);
+          loadedEntries = await getEntriesByDateRange(weekStart, weekEnd);
         } else if (view === 'month') {
           const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
           const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-          const monthEntries = await getEntriesByDateRange(monthStart, monthEnd);
-          setEntries(monthEntries);
+          loadedEntries = await getEntriesByDateRange(monthStart, monthEnd);
         }
+
+        // Auto-create entries for today's habits that don't have one yet
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        for (const habit of loadedHabits) {
+          if (shouldHabitRunToday(habit, today)) {
+            const hasEntry = loadedEntries.some(
+              (e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString()
+            );
+            if (!hasEntry) {
+              const newEntry: HabitEntry = {
+                id: generateId(),
+                habitId: habit.id,
+                date: today,
+                scheduledTime: '09:00',
+                completed: false,
+              };
+              await addOrUpdateEntry(newEntry);
+              loadedEntries.push(newEntry);
+            }
+          }
+        }
+        setEntries(loadedEntries);
       } catch (error) {
         console.error('Failed to initialize app:', error);
       } finally {
@@ -104,7 +86,6 @@ function App() {
     init();
   }, []);
 
-  // Generate entries for habits on a specific date
   const ensureEntriesExist = async (date: Date, habitsToCheck: Habit[]) => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
@@ -120,7 +101,7 @@ function App() {
             id: generateId(),
             habitId: habit.id,
             date: dayStart,
-            scheduledTime: '09:00', // Default time
+            scheduledTime: '09:00',
             completed: false,
           };
           await addOrUpdateEntry(newEntry);
@@ -130,13 +111,11 @@ function App() {
     }
   };
 
-  // Handle adding a new habit
   const handleAddHabit = async (habit: Habit) => {
     try {
       await addHabit(habit);
       setHabits((prev) => [...prev, habit]);
 
-      // Create entries for today and upcoming days
       for (let i = 0; i < 7; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
@@ -149,19 +128,21 @@ function App() {
     }
   };
 
-  // Handle updating an entry
   const handleEntryUpdate = async (entry: HabitEntry) => {
     try {
       await addOrUpdateEntry(entry);
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? entry : e))
-      );
+      setEntries((prev) => {
+        const exists = prev.some((e) => e.id === entry.id);
+        if (exists) {
+          return prev.map((e) => (e.id === entry.id ? entry : e));
+        }
+        return [...prev, entry];
+      });
     } catch (error) {
       console.error('Failed to update entry:', error);
     }
   };
 
-  // Handle deleting an entry
   const handleEntryDelete = async (entryId: string) => {
     try {
       setEntries((prev) => prev.filter((e) => e.id !== entryId));
@@ -170,19 +151,16 @@ function App() {
     }
   };
 
-  // Handle view changes
   const handleDateChange = (date: Date) => {
     setCurrentDate(date);
   };
 
   const handleAddNote = async (note: Note) => {
     try {
-      console.log('App: Saving note to database:', note);
       await addOrUpdateNote(note);
-      console.log('App: Note saved, updating state');
       setNotes((prev) => [note, ...prev]);
     } catch (error) {
-      console.error('App: Failed to add note:', error);
+      console.error('Failed to add note:', error);
     }
   };
 
@@ -256,7 +234,6 @@ function App() {
     }
   };
 
-  // Handle panel resize
   const handleResizeStart = (e: React.MouseEvent) => {
     setIsDraggingResize(true);
     const startX = e.clientX;
@@ -273,7 +250,6 @@ function App() {
       setIsDraggingResize(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      // Save preference to localStorage
       localStorage.setItem('notesPanelWidth', currentWidth.toString());
     };
 
@@ -281,64 +257,148 @@ function App() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // Toggle habit completion for mobile view
+  const handleMobileToggle = (habit: Habit) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const existingEntry = entries.find(
+      (e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString()
+    );
+
+    if (existingEntry) {
+      handleEntryUpdate({ ...existingEntry, completed: !existingEntry.completed });
+    } else {
+      const newEntry: HabitEntry = {
+        id: generateId(),
+        habitId: habit.id,
+        date: today,
+        scheduledTime: '09:00',
+        completed: true,
+      };
+      handleEntryUpdate(newEntry);
+    }
+  };
+
+  // Get today's habits for mobile view
+  const todaysHabits = habits.filter((h) => shouldHabitRunToday(h, new Date()));
+
   if (loading) {
     return <div className="App loading">Loading...</div>;
   }
 
   return (
     <div className="App">
-      <nav className="sidebar">
-        <div className="logo">
-          <h1>Personal Systems</h1>
-        </div>
-
-        <div className="view-toggle">
-          <button
-            className={`view-btn ${view === 'daily' ? 'active' : ''}`}
-            onClick={() => handleViewChange('daily')}
-          >
-            Daily
-          </button>
-          <button
-            className={`view-btn ${view === 'week' ? 'active' : ''}`}
-            onClick={() => handleViewChange('week')}
-          >
-            Week
-          </button>
-          <button
-            className={`view-btn ${view === 'month' ? 'active' : ''}`}
-            onClick={() => handleViewChange('month')}
-          >
-            Month
-          </button>
-        </div>
-
-        <div className="actions">
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            + Add Habit
-          </button>
-        </div>
-
-        <div className="habits-summary">
-          <h3>Your Habits ({habits.length})</h3>
-          <div className="habits-list-mini">
-            {habits.map((habit) => (
-              <div key={habit.id} className="habit-mini">
-                <div className="habit-color" style={{ backgroundColor: habit.color }} />
-                <span>{habit.name}</span>
-              </div>
-            ))}
+      {/* ===== DESKTOP LAYOUT ===== */}
+      <div className="desktop-only">
+        <nav className="sidebar">
+          <div className="logo">
+            <h1>Personal Systems</h1>
           </div>
-        </div>
-      </nav>
 
-      <main className="main-layout">
-        <div className="calendar-container">
-          {/* Mobile toggle button */}
-          <button className="mobile-notes-toggle" onClick={() => setShowNotesPanelMobile(!showNotesPanelMobile)}>
-            {showNotesPanelMobile ? '✕ Close' : '📝 Notes'}
+          <div className="view-toggle">
+            <button
+              className={`view-btn ${view === 'daily' ? 'active' : ''}`}
+              onClick={() => handleViewChange('daily')}
+            >
+              Daily
+            </button>
+            <button
+              className={`view-btn ${view === 'week' ? 'active' : ''}`}
+              onClick={() => handleViewChange('week')}
+            >
+              Week
+            </button>
+            <button
+              className={`view-btn ${view === 'month' ? 'active' : ''}`}
+              onClick={() => handleViewChange('month')}
+            >
+              Month
+            </button>
+          </div>
+
+          <div className="actions">
+            <button className="btn-primary" onClick={() => setShowForm(true)}>
+              + Add Habit
+            </button>
+          </div>
+
+          <div className="habits-summary">
+            <h3>Your Habits ({habits.length})</h3>
+            <div className="habits-list-mini">
+              {habits.map((habit) => (
+                <div key={habit.id} className="habit-mini">
+                  <div className="habit-color" style={{ backgroundColor: habit.color }} />
+                  <span>{habit.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        <main className="main-layout">
+          <div className="calendar-container">
+            {view === 'daily' && (
+              <DailyView
+                date={currentDate}
+                habits={habits}
+                entries={entries}
+                onEntryUpdate={handleEntryUpdate}
+                onEntryDelete={handleEntryDelete}
+              />
+            )}
+            {view === 'week' && (
+              <WeekView
+                startDate={getWeekStart(currentDate)}
+                habits={habits}
+                entries={entries}
+                onDateSelect={handleDateChange}
+                onEntryUpdate={handleEntryUpdate}
+              />
+            )}
+            {view === 'month' && (
+              <MonthView
+                year={currentDate.getFullYear()}
+                month={currentDate.getMonth()}
+                habits={habits}
+                entries={entries}
+                onDateSelect={handleDateChange}
+              />
+            )}
+          </div>
+
+          <div
+            className={`resize-handle ${isDraggingResize ? 'dragging' : ''}`}
+            onMouseDown={handleResizeStart}
+            title="Drag to resize"
+          />
+
+          <div className="notes-panel" style={{ width: `${notesPanelWidth}px` }}>
+            <NotesView
+              notes={notes}
+              ideas={ideas}
+              onAddNote={handleAddNote}
+              onUpdateNote={handleUpdateNote}
+              onDeleteNote={handleDeleteNote}
+              onAddIdea={handleAddIdea}
+              onUpdateIdea={handleUpdateIdea}
+              onDeleteIdea={handleDeleteIdea}
+            />
+          </div>
+        </main>
+      </div>
+
+      {/* ===== MOBILE LAYOUT ===== */}
+      <div className="mobile-only">
+        {/* Top Bar: Logo + Notes Button */}
+        <div className="mobile-top-bar">
+          <div className="mobile-logo">Personal Systems</div>
+          <button className="mobile-notes-btn" onClick={() => setShowNotes(true)}>
+            📝 Notes
           </button>
+        </div>
 
+        {/* Calendar / View Area */}
+        <div className="mobile-calendar">
           {view === 'daily' && (
             <DailyView
               date={currentDate}
@@ -354,6 +414,7 @@ function App() {
               habits={habits}
               entries={entries}
               onDateSelect={handleDateChange}
+              onEntryUpdate={handleEntryUpdate}
             />
           )}
           {view === 'month' && (
@@ -367,35 +428,105 @@ function App() {
           )}
         </div>
 
-        <div 
-          className={`resize-handle ${isDraggingResize ? 'dragging' : ''}`}
-          onMouseDown={handleResizeStart}
-          title="Drag to resize"
-        />
+        {/* Habit List with Checkboxes */}
+        <div className="mobile-habit-list">
+          <h3 className="mobile-habit-list-title">Today's Habits</h3>
+          {todaysHabits.length === 0 && (
+            <p className="mobile-no-habits">No habits scheduled for today</p>
+          )}
+          {todaysHabits.map((habit) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const entry = entries.find(
+              (e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString()
+            );
+            const isCompleted = entry?.completed ?? false;
 
-        <div className={`notes-panel ${showNotesPanelMobile ? 'mobile-open' : ''}`} style={{ width: `${notesPanelWidth}px` }}>
-          <NotesView
-            notes={notes}
-            ideas={ideas}
-            onAddNote={handleAddNote}
-            onUpdateNote={handleUpdateNote}
-            onDeleteNote={handleDeleteNote}
-            onAddIdea={handleAddIdea}
-            onUpdateIdea={handleUpdateIdea}
-            onDeleteIdea={handleDeleteIdea}
-          />
+            return (
+              <div
+                key={habit.id}
+                className={`mobile-habit-item ${isCompleted ? 'completed' : ''}`}
+                onClick={() => handleMobileToggle(habit)}
+              >
+                <div className="mobile-habit-check">
+                  <div
+                    className="mobile-checkbox"
+                    style={{
+                      borderColor: habit.color,
+                      backgroundColor: isCompleted ? habit.color : 'transparent',
+                    }}
+                  >
+                    {isCompleted && <span className="checkmark">✓</span>}
+                  </div>
+                </div>
+                <div className="mobile-habit-info">
+                  <span className="mobile-habit-name" style={{ color: isCompleted ? '#999' : '#333' }}>
+                    {habit.name}
+                  </span>
+                </div>
+                <div
+                  className="mobile-habit-color-dot"
+                  style={{ backgroundColor: habit.color }}
+                />
+              </div>
+            );
+          })}
         </div>
-      </main>
 
+        {/* Add Habit Button */}
+        <button className="mobile-add-habit" onClick={() => setShowForm(true)}>
+          + Add Habit
+        </button>
+
+        {/* Bottom Tab Bar: Day / Week / Month */}
+        <div className="mobile-bottom-bar">
+          <button
+            className={`mobile-tab ${view === 'daily' ? 'active' : ''}`}
+            onClick={() => handleViewChange('daily')}
+          >
+            Day
+          </button>
+          <button
+            className={`mobile-tab ${view === 'week' ? 'active' : ''}`}
+            onClick={() => handleViewChange('week')}
+          >
+            Week
+          </button>
+          <button
+            className={`mobile-tab ${view === 'month' ? 'active' : ''}`}
+            onClick={() => handleViewChange('month')}
+          >
+            Month
+          </button>
+        </div>
+
+        {/* Notes Modal (slides in when tapped) */}
+        {showNotes && (
+          <div className="mobile-notes-modal" onClick={() => setShowNotes(false)}>
+            <div className="mobile-notes-content" onClick={(e) => e.stopPropagation()}>
+              <div className="mobile-notes-header">
+                <h2>Notes & Ideas</h2>
+                <button className="mobile-notes-close" onClick={() => setShowNotes(false)}>✕</button>
+              </div>
+              <NotesView
+                notes={notes}
+                ideas={ideas}
+                onAddNote={handleAddNote}
+                onUpdateNote={handleUpdateNote}
+                onDeleteNote={handleDeleteNote}
+                onAddIdea={handleAddIdea}
+                onUpdateIdea={handleUpdateIdea}
+                onDeleteIdea={handleDeleteIdea}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Shared: Habit Form Modal */}
       {showForm && <HabitForm onSubmit={handleAddHabit} onCancel={() => setShowForm(false)} />}
     </div>
   );
 }
 
-export default function AppWithErrorBoundary() {
-  return (
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
-}
+export default App;

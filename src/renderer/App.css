@@ -1,352 +1,477 @@
+/* ===== GLOBAL RESET ===== */
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 0;
-  background: #fafafa;
-  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #ffffff;
   overflow-x: hidden;
 }
 
+/* ===== APP CONTAINER ===== */
 .App {
   display: flex;
-  min-height: 100vh;
-  height: 100%;
+  height: 100vh;
   background: #ffffff;
-  color: #333;
+  color: #262626;
 }
 
 .App.loading {
+  display: flex;
   justify-content: center;
   align-items: center;
   font-size: 1.2rem;
   color: #666;
 }
 
+/* ===== RESPONSIVE VISIBILITY ===== */
+.desktop-only {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* ===== SIDEBAR (DESKTOP) ===== */
 .sidebar {
-  width: 280px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  width: 260px;
+  background: #ffffff;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  padding: 2rem 1.5rem;
-  overflow-y: auto;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-  border-right: 1px solid #667eea;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.06);
+  border-right: 1px solid #e5e5e5;
+  flex-shrink: 0;
 }
 
 .logo h1 {
   margin: 0 0 2rem 0;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
+/* View Toggle (Desktop) */
 .view-toggle {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 1.5rem;
 }
 
 .view-btn {
   flex: 1;
-  padding: 0.75rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 16px;
+  border: none;
   background: transparent;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
+  color: #666;
+  font-size: 0.9rem;
   font-weight: 500;
-  transition: all 0.2s;
-  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.2s ease;
 }
 
 .view-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  color: #333;
+  background: #e8e8e8;
 }
 
 .view-btn.active {
-  background: white;
-  color: #667eea;
-  border-color: white;
+  background: #667eea;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
+/* Actions */
 .actions {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .btn-primary {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: white;
-  color: #667eea;
+  padding: 12px;
   border: none;
-  border-radius: 6px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-size: 1rem;
   font-weight: 600;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.95rem;
+  transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
+/* Habits Summary */
 .habits-summary {
-  margin-top: auto;
-  padding-top: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  flex: 1;
+  overflow-y: auto;
 }
 
 .habits-summary h3 {
-  margin: 0 0 1rem 0;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  opacity: 0.9;
+  font-size: 0.95rem;
+  color: #444;
+  margin: 0 0 0.75rem 0;
 }
 
 .habits-list-mini {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 8px;
 }
 
 .habit-mini {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  font-size: 0.9rem;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: default;
 }
 
 .habit-color {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
+.habit-mini span {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* ===== MAIN LAYOUT (DESKTOP) ===== */
 .main-layout {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 4px minmax(250px, 1fr);
-  gap: 0;
+  display: flex;
   overflow: hidden;
 }
 
 .calendar-container {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: white;
+  overflow-y: auto;
+  padding: 1.5rem;
 }
 
+/* Resize Handle */
 .resize-handle {
-  width: 4px;
-  background: #ddd;
+  width: 6px;
   cursor: col-resize;
+  background: transparent;
   transition: background 0.2s;
-  user-select: none;
+  flex-shrink: 0;
 }
 
-.resize-handle:hover {
-  background: #999;
-}
-
+.resize-handle:hover,
 .resize-handle.dragging {
   background: #667eea;
 }
 
+/* Notes Panel (Desktop) */
 .notes-panel {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: white;
-  border-left: 1px solid #eee;
+  flex-shrink: 0;
+  border-left: 1px solid #e5e5e5;
+  overflow-y: auto;
+  background: #fafafa;
 }
 
-.mobile-notes-toggle {
-  display: none;
-}
-
-/* Mobile Responsive Design */
-@media (max-width: 1024px) {
-  .sidebar {
-    width: 220px;
-    padding: 1.5rem 1rem;
-  }
-
-  .logo h1 {
-    font-size: 1.2rem;
-    margin: 0 0 1.5rem 0;
-  }
-
-  .view-btn {
-    font-size: 0.75rem;
-    padding: 0.6rem;
-  }
-
-  .btn-primary {
-    font-size: 0.85rem;
-  }
-
-  .main-layout {
-    grid-template-columns: 1fr 3px minmax(200px, 350px);
-  }
-}
-
+/* ================================================
+   MOBILE STYLES (max-width: 768px)
+   ================================================ */
 @media (max-width: 768px) {
-  .App {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex;
     flex-direction: column;
-    min-height: auto;
-    height: auto;
-  }
-
-  .sidebar {
     width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    height: auto;
-    order: -1;
-    flex-shrink: 0;
-  }
-
-  .logo h1 {
-    margin: 0;
-    font-size: 1rem;
-  }
-
-  .view-toggle {
-    margin-bottom: 0;
-    gap: 0.25rem;
-  }
-
-  .view-btn {
-    font-size: 0.7rem;
-    padding: 0.5rem;
-  }
-
-  .actions {
-    margin-bottom: 0;
-  }
-
-  .btn-primary {
-    padding: 0.6rem 0.8rem;
-    font-size: 0.8rem;
-  }
-
-  .habits-summary {
-    display: none;
-  }
-
-  .main-layout {
-    grid-template-columns: 1fr;
-    height: auto;
-    flex: 1 1 auto;
+    height: 100vh;
     overflow: hidden;
   }
 
-  .calendar-container {
-    min-height: 300px;
-    position: relative;
-    overflow-y: auto;
+  .App {
+    flex-direction: column;
   }
 
-  .mobile-notes-toggle {
-    display: block;
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 100;
-    padding: 0.5rem 1rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 6px;
+  /* ===== MOBILE TOP BAR ===== */
+  .mobile-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+  }
+
+  .mobile-logo {
+    font-size: 1.3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .mobile-notes-btn {
+    padding: 8px 14px;
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #555;
     cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-notes-btn:active {
+    background: #f0f0f0;
+    transform: scale(0.96);
+  }
+
+  /* ===== MOBILE CALENDAR ===== */
+  .mobile-calendar {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+    min-height: 0;
+  }
+
+  /* ===== MOBILE HABIT LIST ===== */
+  .mobile-habit-list {
+    padding: 0 16px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .mobile-habit-list-title {
+    font-size: 0.95rem;
     font-weight: 600;
-    font-size: 0.9rem;
+    color: #444;
+    margin: 0 0 8px 0;
   }
 
-  .mobile-notes-toggle:hover {
-    background: #5568d3;
+  .mobile-no-habits {
+    color: #999;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 12px 0;
   }
 
-  .notes-panel {
-    display: none;
-    width: 100% !important;
-    min-height: 300px;
-    border-left: none;
+  .mobile-habit-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    background: #f9f9f9;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-habit-item:active {
+    transform: scale(0.98);
+    background: #f0f0f0;
+  }
+
+  .mobile-habit-item.completed {
+    opacity: 0.7;
+  }
+
+  .mobile-habit-check {
+    flex-shrink: 0;
+  }
+
+  .mobile-checkbox {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 2.5px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+
+  .checkmark {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .mobile-habit-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mobile-habit-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.15s ease;
+  }
+
+  .mobile-habit-item.completed .mobile-habit-name {
+    text-decoration: line-through;
+  }
+
+  .mobile-habit-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ===== MOBILE ADD HABIT BUTTON ===== */
+  .mobile-add-habit {
+    margin: 4px 16px 8px;
+    padding: 12px;
+    border: 2px dashed #ccc;
+    background: transparent;
+    color: #667eea;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .mobile-add-habit:active {
+    background: #f5f3ff;
+    border-color: #667eea;
+    transform: scale(0.98);
+  }
+
+  /* ===== MOBILE BOTTOM BAR ===== */
+  .mobile-bottom-bar {
+    display: flex;
+    background: #ffffff;
     border-top: 1px solid #eee;
+    padding: 6px 16px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: #f5f5f5;
+    color: #888;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab:active {
+    transform: scale(0.96);
+  }
+
+  .mobile-tab.active {
+    background: #667eea;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  /* ===== MOBILE NOTES MODAL ===== */
+  .mobile-notes-modal {
     position: fixed;
-    bottom: 0;
+    top: 0;
     left: 0;
     right: 0;
-    z-index: 99;
-    max-height: 60vh;
-  }
-
-  .notes-panel.mobile-open {
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 900;
     display: flex;
+    justify-content: flex-end;
+    animation: fadeIn 0.2s ease;
   }
 
-  .resize-handle {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .sidebar {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 0.75rem;
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
-  .logo h1 {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
+  .mobile-notes-content {
+    width: 85%;
+    max-width: 400px;
+    height: 100%;
+    background: #fff;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    animation: slideIn 0.25s ease;
   }
 
-  .view-toggle {
-    width: 100%;
-    margin-bottom: 0.5rem;
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
   }
 
-  .view-btn {
-    font-size: 0.65rem;
-    padding: 0.4rem;
+  .mobile-notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
   }
 
-  .actions {
-    width: 100%;
+  .mobile-notes-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
   }
 
-  .btn-primary {
-    padding: 0.5rem;
-    font-size: 0.75rem;
+  .mobile-notes-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f0f0f0;
+    border-radius: 50%;
+    font-size: 1rem;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .main-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-container {
-    min-height: 300px;
-  }
-
-  .notes-panel {
-    min-height: 250px;
+  .mobile-notes-close:active {
+    background: #ddd;
   }
 }

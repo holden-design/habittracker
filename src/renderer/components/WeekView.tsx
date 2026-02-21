@@ -1,6 +1,6 @@
 import React from 'react';
 import { Habit, HabitEntry } from '../types';
-import { calculateStreak } from '../services/utils';
+import { calculateStreak, generateId } from '../services/utils';
 import './WeekView.css';
 
 interface WeekViewProps {
@@ -8,30 +8,54 @@ interface WeekViewProps {
   habits: Habit[];
   entries: HabitEntry[];
   onDateSelect: (date: Date) => void;
+  onEntryUpdate: (entry: HabitEntry) => void;
 }
 
-export const WeekView: React.FC<WeekViewProps> = ({ startDate, habits, entries, onDateSelect }) => {
+export const WeekView: React.FC<WeekViewProps> = ({ startDate, habits, entries, onDateSelect, onEntryUpdate }) => {
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(startDate);
     date.setDate(date.getDate() + i);
     return date;
   });
 
-  const getCompletionForHabit = (habit: Habit, date: Date): boolean => {
+  const getEntryForHabit = (habit: Habit, date: Date): HabitEntry | undefined => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
 
-    return entries.some((e) => {
+    return entries.find((e) => {
       const entryDate = new Date(e.date);
       return (
         e.habitId === habit.id &&
-        e.completed &&
         entryDate >= dayStart &&
         entryDate <= dayEnd
       );
     });
+  };
+
+  const getCompletionForHabit = (habit: Habit, date: Date): boolean => {
+    const entry = getEntryForHabit(habit, date);
+    return entry ? entry.completed : false;
+  };
+
+  const toggleCompletion = (habit: Habit, date: Date) => {
+    const entry = getEntryForHabit(habit, date);
+    if (entry) {
+      onEntryUpdate({ ...entry, completed: !entry.completed, completedAt: !entry.completed ? new Date() : undefined });
+    } else {
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const newEntry: HabitEntry = {
+        id: generateId(),
+        habitId: habit.id,
+        date: dayStart,
+        scheduledTime: '09:00',
+        completed: true,
+        completedAt: new Date(),
+      };
+      onEntryUpdate(newEntry);
+    }
   };
 
   const habitStreak = (habit: Habit) => {
@@ -81,8 +105,10 @@ export const WeekView: React.FC<WeekViewProps> = ({ startDate, habits, entries, 
                 <div
                   key={`${habit.id}-${date.toISOString()}`}
                   className={`completion-cell ${completed ? 'completed' : ''}`}
+                  onClick={() => toggleCompletion(habit, date)}
                   style={{
                     backgroundColor: completed ? habit.color : '#f5f5f5',
+                    cursor: 'pointer',
                   }}
                 >
                   {completed && <div className="checkmark">✓</div>}

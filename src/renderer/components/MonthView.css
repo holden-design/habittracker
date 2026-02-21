@@ -2,94 +2,104 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: white;
+  background: #fafafa;
   padding: 1.5rem;
 }
 
 .month-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .month-header h3 {
   margin: 0;
   font-size: 1.5rem;
-  color: #333;
+  color: #262626;
+  font-weight: 700;
 }
 
 .month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  background: #ddd;
-  padding: 1px;
-  border-radius: 8px;
-  overflow: hidden;
+  gap: 8px;
   margin-bottom: 2rem;
   flex: 1;
 }
 
 .day-label {
   padding: 1rem;
-  background: #f9f9f9;
-  font-weight: 600;
+  background: transparent;
+  font-weight: 700;
   text-align: center;
-  color: #666;
-  font-size: 0.9rem;
+  color: #262626;
+  font-size: 0.85rem;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .month-day {
   background: white;
   padding: 1rem;
-  min-height: 80px;
+  min-height: 100px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .month-day:hover {
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
+  border-color: #262626;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .month-day.empty {
-  background: #fafafa;
+  background: #f0f0f0;
   cursor: default;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .month-day.empty:hover {
   box-shadow: none;
+  transform: none;
 }
 
 .day-number {
-  font-weight: 600;
-  color: #333;
-  font-size: 1.1rem;
+  font-weight: 700;
+  color: #262626;
+  font-size: 1.2rem;
 }
 
 .day-completion {
   font-size: 0.75rem;
   color: #666;
-  margin-top: 0.5rem;
-  background: rgba(78, 205, 196, 0.1);
-  padding: 0.25rem 0.5rem;
-  border-radius: 3px;
+  margin-top: 0.75rem;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
   width: fit-content;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .month-legend {
-  background: #f9f9f9;
-  border-radius: 8px;
+  background: white;
+  border-radius: 12px;
   padding: 1.5rem;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .month-legend h4 {
   margin: 0 0 1rem 0;
-  color: #555;
-  font-size: 0.9rem;
+  color: #262626;
+  font-size: 0.95rem;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .streaks-grid {

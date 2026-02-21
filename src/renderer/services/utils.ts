@@ -99,3 +99,38 @@ export const calculateStreak = (entries: HabitEntry[], habit: Habit): number => 
 
   return streak;
 };
+
+export const getMissedHabits = (habits: Habit[], entries: HabitEntry[], now: Date = new Date()): Array<{habit: Habit, missedTime: string}> => {
+  const missedHabits: Array<{habit: Habit, missedTime: string}> = [];
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  habits.forEach(habit => {
+    // Check if this habit should run today
+    if (!shouldHabitRunToday(habit, now)) return;
+
+    // Check entries for today
+    const todayEntries = entries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate.toDateString() === now.toDateString() && entry.habitId === habit.id;
+    });
+
+    // If habit is completed, it's not missed
+    if (todayEntries.some(e => e.completed)) return;
+
+    // Check if any scheduled time has passed
+    todayEntries.forEach(entry => {
+      const [scheduledHour, scheduledMinute] = entry.scheduledTime.split(':').map(Number);
+      
+      // If scheduled time has passed (considering current time is after scheduled time)
+      if (currentHour > scheduledHour || (currentHour === scheduledHour && currentMinute > scheduledMinute)) {
+        missedHabits.push({
+          habit,
+          missedTime: entry.scheduledTime
+        });
+      }
+    });
+  });
+
+  return missedHabits;
+};

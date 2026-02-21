@@ -39,8 +39,10 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
 
     const entry = todayEntries.find((e) => e.id === draggedEntry);
     if (entry) {
-      const newTime = `${String(hour).padStart(2, '0')}:${entry.actualTime?.split(':')[1] || '00'}`;
-      onEntryUpdate({ ...entry, actualTime: newTime });
+      const currentTime = entry.actualTime || entry.scheduledTime;
+      const minutes = currentTime?.split(':')[1] || '00';
+      const newTime = `${String(hour).padStart(2, '0')}:${minutes}`;
+      onEntryUpdate({ ...entry, scheduledTime: newTime, actualTime: newTime });
     }
     setDraggedEntry(null);
   };

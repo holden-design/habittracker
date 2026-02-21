@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Habit } from '../types';
 import { generateId, getRandomColor } from '../services/utils';
-import { sendHabitNotification, requestNotificationPermission } from '../services/notifications';
 import './HabitForm.css';
 
 interface HabitFormProps {
@@ -33,10 +32,6 @@ export const HabitForm: React.FC<HabitFormProps> = ({ onSubmit, onCancel }) => {
       createdAt: new Date(),
     };
 
-    // Request notification permission and send notification
-    requestNotificationPermission();
-    sendHabitNotification(habit.name, frequency);
-    
     onSubmit(habit);
   };
 
