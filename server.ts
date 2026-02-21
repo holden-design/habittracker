@@ -1,8 +1,8 @@
-import * as express from 'express';
-import * as cors from 'cors';
-import * as path from 'path';
-import { Pool, PoolClient } from 'pg';
-import * as dotenv from 'dotenv';
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import path from 'path';
+import { Pool } from 'pg';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -14,10 +14,10 @@ app.use(cors());
 app.use(express.json());
 
 // Database connection
-const pool: Pool = new Pool({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://localhost/personalsystems',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-}) as Pool;
+});
 
 // Initialize database tables
 const initDB = async () => {
@@ -81,7 +81,7 @@ const initDB = async () => {
 // ==================== HABITS API ====================
 
 // GET all habits
-app.get('/api/habits', async (req, res) => {
+app.get('/api/habits', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM habits ORDER BY created_at DESC');
     res.json(result.rows);
@@ -92,7 +92,7 @@ app.get('/api/habits', async (req, res) => {
 });
 
 // POST new habit
-app.post('/api/habits', async (req, res) => {
+app.post('/api/habits', async (req: Request, res: Response) => {
   const { id, name, color, frequency, customDays, targetDurationMinutes, createdAt } = req.body;
   try {
     const result = await pool.query(
@@ -108,7 +108,7 @@ app.post('/api/habits', async (req, res) => {
 });
 
 // DELETE habit
-app.delete('/api/habits/:id', async (req, res) => {
+app.delete('/api/habits/:id', async (req: Request, res: Response) => {
   try {
     await pool.query('DELETE FROM habits WHERE id = $1', [req.params.id]);
     res.json({ success: true });
@@ -121,7 +121,7 @@ app.delete('/api/habits/:id', async (req, res) => {
 // ==================== ENTRIES API ====================
 
 // GET entries by date
-app.get('/api/entries/date/:date', async (req, res) => {
+app.get('/api/entries/date/:date', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
       'SELECT * FROM entries WHERE date = $1 ORDER BY scheduled_time',
@@ -135,7 +135,7 @@ app.get('/api/entries/date/:date', async (req, res) => {
 });
 
 // GET entries by date range
-app.get('/api/entries/range/:start/:end', async (req, res) => {
+app.get('/api/entries/range/:start/:end', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
       'SELECT * FROM entries WHERE date >= $1 AND date <= $2 ORDER BY date, scheduled_time',
@@ -149,7 +149,7 @@ app.get('/api/entries/range/:start/:end', async (req, res) => {
 });
 
 // POST/UPDATE entry
-app.post('/api/entries', async (req, res) => {
+app.post('/api/entries', async (req: Request, res: Response) => {
   const { id, habitId, date, scheduledTime, actualTime, completed, completedAt, createdAt } = req.body;
   try {
     const result = await pool.query(
@@ -167,7 +167,7 @@ app.post('/api/entries', async (req, res) => {
 });
 
 // DELETE entry
-app.delete('/api/entries/:id', async (req, res) => {
+app.delete('/api/entries/:id', async (req: Request, res: Response) => {
   try {
     await pool.query('DELETE FROM entries WHERE id = $1', [req.params.id]);
     res.json({ success: true });
@@ -180,7 +180,7 @@ app.delete('/api/entries/:id', async (req, res) => {
 // ==================== NOTES API ====================
 
 // GET all notes
-app.get('/api/notes', async (req, res) => {
+app.get('/api/notes', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM notes ORDER BY updated_at DESC');
     res.json(result.rows);
@@ -191,7 +191,7 @@ app.get('/api/notes', async (req, res) => {
 });
 
 // POST note
-app.post('/api/notes', async (req, res) => {
+app.post('/api/notes', async (req: Request, res: Response) => {
   const { id, title, content, pinned, createdAt } = req.body;
   try {
     const result = await pool.query(
@@ -209,7 +209,7 @@ app.post('/api/notes', async (req, res) => {
 });
 
 // DELETE note
-app.delete('/api/notes/:id', async (req, res) => {
+app.delete('/api/notes/:id', async (req: Request, res: Response) => {
   try {
     await pool.query('DELETE FROM notes WHERE id = $1', [req.params.id]);
     res.json({ success: true });
@@ -222,7 +222,7 @@ app.delete('/api/notes/:id', async (req, res) => {
 // ==================== IDEAS API ====================
 
 // GET all ideas
-app.get('/api/ideas', async (req, res) => {
+app.get('/api/ideas', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM ideas ORDER BY updated_at DESC');
     res.json(result.rows);
@@ -233,7 +233,7 @@ app.get('/api/ideas', async (req, res) => {
 });
 
 // POST idea
-app.post('/api/ideas', async (req, res) => {
+app.post('/api/ideas', async (req: Request, res: Response) => {
   const { id, title, description, category, pinned, createdAt } = req.body;
   try {
     const result = await pool.query(
@@ -251,7 +251,7 @@ app.post('/api/ideas', async (req, res) => {
 });
 
 // DELETE idea
-app.delete('/api/ideas/:id', async (req, res) => {
+app.delete('/api/ideas/:id', async (req: Request, res: Response) => {
   try {
     await pool.query('DELETE FROM ideas WHERE id = $1', [req.params.id]);
     res.json({ success: true });
@@ -267,7 +267,7 @@ app.delete('/api/ideas/:id', async (req, res) => {
 app.use(express.static(path.join(__dirname, '../build')));
 
 // For any other route, serve index.html (for React routing)
-app.get('*', (req, res) => {
+app.get("*", (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../build/index.html'));
 });
 
