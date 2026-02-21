@@ -52,3 +52,4 @@ npm run dist
 ## License
 
 MIT
+# Force rebuild
