@@ -1,5 +1,5 @@
 {
-  "name": "Personal Systems",
+  "name": "personal-systems",
   "version": "0.1.0",
   "description": "A visual daily review & planning system with habit tracking",
   "main": "dist/index.js",
@@ -59,6 +59,7 @@
     ]
   },
   "build": {
+    "extends": null,
     "appId": "com.personalsystems.app",
     "productName": "Personal Systems",
     "files": [

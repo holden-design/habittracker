@@ -7,6 +7,9 @@ let mainWindow: BrowserWindow | null = null;
 // Set app name
 app.name = 'Personal Systems';
 
+// Production URL (Railway deployment)
+const PRODUCTION_URL = 'https://personal-systems-production.up.railway.app';
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -34,7 +37,7 @@ function createWindow() {
           "style-src 'self' 'unsafe-inline' https://accounts.google.com",
           "img-src 'self' data: https://*.googleusercontent.com https://*.fbcdn.net",
           "font-src 'self' data:",
-          "connect-src 'self' ws: wss: http://localhost:5000 https://oauth2.googleapis.com https://graph.facebook.com",
+          `connect-src 'self' ws: wss: http://localhost:5000 ${PRODUCTION_URL} https://oauth2.googleapis.com https://graph.facebook.com`,
           "frame-src https://accounts.google.com https://www.facebook.com",
           "frame-ancestors 'none'",
         ].join('; '),
@@ -44,7 +47,7 @@ function createWindow() {
 
   const startUrl = isDev
     ? 'http://localhost:3000'
-    : `file://${path.join(__dirname, '../build/index.html')}`;
+    : PRODUCTION_URL;
 
   mainWindow.loadURL(startUrl);
 
