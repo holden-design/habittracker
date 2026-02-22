@@ -74,3 +74,13 @@ export interface AIHabitNudge {
   suggestedTime: string;
   message: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  plan: 'free' | 'paid';
+  authProvider: 'email' | 'google' | 'facebook';
+  marketingConsent: boolean;
+  createdAt: Date;
+}

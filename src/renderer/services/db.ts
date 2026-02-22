@@ -1,7 +1,131 @@
-import { Habit, HabitEntry, Note, Idea } from '../types';
+import { Habit, HabitEntry, Note, Idea, User } from '../types';
 
 // API URL - uses localhost for development, or window.location.origin for production
 const API_URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:5000';
+
+// ===== AUTH TOKEN MANAGEMENT =====
+const AUTH_TOKEN_KEY = 'ps_auth_token';
+const AUTH_USER_KEY = 'ps_auth_user';
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function setAuthToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearAuth(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+  backendAvailable = null;
+}
+
+function getAuthHeaders(includeContentType = true): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (includeContentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+}
+
+// ===== AUTH API =====
+export async function signup(email: string, password: string, name: string, marketingConsent: boolean = false): Promise<{ token: string; user: User }> {
+  const response = await fetch(`${API_URL}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, name, marketingConsent }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Signup failed');
+  }
+  const data = await response.json();
+  setAuthToken(data.token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+  backendAvailable = true;
+  return data;
+}
+
+export async function login(email: string, password: string): Promise<{ token: string; user: User }> {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Login failed');
+  }
+  const data = await response.json();
+  setAuthToken(data.token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+  backendAvailable = true;
+  return data;
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) {
+      clearAuth();
+      return null;
+    }
+    const user = await response.json();
+    backendAvailable = true;
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+export function logout(): void {
+  clearAuth();
+}
+
+export async function loginWithGoogle(credential: string, marketingConsent: boolean = false): Promise<{ token: string; user: User }> {
+  const response = await fetch(`${API_URL}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential, marketingConsent }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Google login failed');
+  }
+  const data = await response.json();
+  setAuthToken(data.token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+  backendAvailable = true;
+  return data;
+}
+
+export async function loginWithFacebook(accessToken: string, marketingConsent: boolean = false): Promise<{ token: string; user: User }> {
+  const response = await fetch(`${API_URL}/api/auth/facebook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken, marketingConsent }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Facebook login failed');
+  }
+  const data = await response.json();
+  setAuthToken(data.token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+  backendAvailable = true;
+  return data;
+}
 
 // Map snake_case DB columns to camelCase TypeScript properties
 function mapEntry(e: any): HabitEntry {
@@ -79,7 +203,7 @@ let backendAvailable: boolean | null = null;
 async function isBackendUp(): Promise<boolean> {
   if (backendAvailable !== null) return backendAvailable;
   try {
-    const res = await fetch(`${API_URL}/api/habits`, { method: 'GET', signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`${API_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
     backendAvailable = res.ok;
   } catch {
     backendAvailable = false;
@@ -97,7 +221,7 @@ export const addHabit = async (habit: Habit): Promise<void> => {
   if (await isBackendUp()) {
     const response = await fetch(`${API_URL}/api/habits`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(habit),
     });
     if (!response.ok) {
@@ -114,7 +238,9 @@ export const addHabit = async (habit: Habit): Promise<void> => {
 export const getHabits = async (): Promise<Habit[]> => {
   if (await isBackendUp()) {
     try {
-      const response = await fetch(`${API_URL}/api/habits`);
+      const response = await fetch(`${API_URL}/api/habits`, {
+        headers: getAuthHeaders(false),
+      });
       if (!response.ok) throw new Error('Failed to fetch habits');
       const data = await response.json();
       return data.map((h: any) => mapHabit(h));
@@ -128,7 +254,7 @@ export const getHabits = async (): Promise<Habit[]> => {
 
 export const deleteHabit = async (habitId: string): Promise<void> => {
   if (await isBackendUp()) {
-    const response = await fetch(`${API_URL}/api/habits/${habitId}`, { method: 'DELETE' });
+    const response = await fetch(`${API_URL}/api/habits/${habitId}`, { method: 'DELETE', headers: getAuthHeaders(false) });
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to delete habit');
@@ -147,7 +273,7 @@ export const addOrUpdateEntry = async (entry: HabitEntry): Promise<void> => {
   if (await isBackendUp()) {
     const response = await fetch(`${API_URL}/api/entries`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(entry),
     });
     if (!response.ok) {
@@ -168,7 +294,7 @@ export const addOrUpdateEntry = async (entry: HabitEntry): Promise<void> => {
 
 export const deleteEntry = async (entryId: string): Promise<void> => {
   if (await isBackendUp()) {
-    const response = await fetch(`${API_URL}/api/entries/${entryId}`, { method: 'DELETE' });
+    const response = await fetch(`${API_URL}/api/entries/${entryId}`, { method: 'DELETE', headers: getAuthHeaders(false) });
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to delete entry');
@@ -187,7 +313,9 @@ export const getEntriesByDate = async (date: Date): Promise<HabitEntry[]> => {
   if (await isBackendUp()) {
     try {
       const dateStr = formatDateForAPI(date);
-      const response = await fetch(`${API_URL}/api/entries/date/${dateStr}`);
+      const response = await fetch(`${API_URL}/api/entries/date/${dateStr}`, {
+        headers: getAuthHeaders(false),
+      });
       if (!response.ok) throw new Error('Failed to fetch entries');
       const data = await response.json();
       return data.map((e: any) => mapEntry(e));
@@ -207,7 +335,9 @@ export const getEntriesByDateRange = async (startDate: Date, endDate: Date): Pro
     try {
       const startStr = formatDateForAPI(startDate);
       const endStr = formatDateForAPI(endDate);
-      const response = await fetch(`${API_URL}/api/entries/range/${startStr}/${endStr}`);
+      const response = await fetch(`${API_URL}/api/entries/range/${startStr}/${endStr}`, {
+        headers: getAuthHeaders(false),
+      });
       if (!response.ok) throw new Error('Failed to fetch entries');
       const data = await response.json();
       return data.map((e: any) => mapEntry(e));
@@ -236,7 +366,7 @@ export const addOrUpdateNote = async (note: Note): Promise<void> => {
   if (await isBackendUp()) {
     const response = await fetch(`${API_URL}/api/notes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(note),
     });
     if (!response.ok) {
@@ -258,7 +388,9 @@ export const addOrUpdateNote = async (note: Note): Promise<void> => {
 export const getNotes = async (): Promise<Note[]> => {
   if (await isBackendUp()) {
     try {
-      const response = await fetch(`${API_URL}/api/notes`);
+      const response = await fetch(`${API_URL}/api/notes`, {
+        headers: getAuthHeaders(false),
+      });
       if (!response.ok) throw new Error('Failed to fetch notes');
       const data = await response.json();
       const notes = data.map((n: any) => mapNote(n));
@@ -274,7 +406,7 @@ export const getNotes = async (): Promise<Note[]> => {
 
 export const deleteNote = async (noteId: string): Promise<void> => {
   if (await isBackendUp()) {
-    const response = await fetch(`${API_URL}/api/notes/${noteId}`, { method: 'DELETE' });
+    const response = await fetch(`${API_URL}/api/notes/${noteId}`, { method: 'DELETE', headers: getAuthHeaders(false) });
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to delete note');
@@ -290,7 +422,7 @@ export const addOrUpdateIdea = async (idea: Idea): Promise<void> => {
   if (await isBackendUp()) {
     const response = await fetch(`${API_URL}/api/ideas`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(idea),
     });
     if (!response.ok) {
@@ -312,7 +444,9 @@ export const addOrUpdateIdea = async (idea: Idea): Promise<void> => {
 export const getIdeas = async (): Promise<Idea[]> => {
   if (await isBackendUp()) {
     try {
-      const response = await fetch(`${API_URL}/api/ideas`);
+      const response = await fetch(`${API_URL}/api/ideas`, {
+        headers: getAuthHeaders(false),
+      });
       if (!response.ok) throw new Error('Failed to fetch ideas');
       const data = await response.json();
       const ideas = data.map((i: any) => mapIdea(i));
@@ -328,7 +462,7 @@ export const getIdeas = async (): Promise<Idea[]> => {
 
 export const deleteIdea = async (ideaId: string): Promise<void> => {
   if (await isBackendUp()) {
-    const response = await fetch(`${API_URL}/api/ideas/${ideaId}`, { method: 'DELETE' });
+    const response = await fetch(`${API_URL}/api/ideas/${ideaId}`, { method: 'DELETE', headers: getAuthHeaders(false) });
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to delete idea');

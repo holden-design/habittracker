@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
-import { Habit, HabitEntry, Note, Idea, PlanTask } from './types';
-import { initDB, addHabit, getHabits, addOrUpdateEntry, getEntriesByDate, getEntriesByDateRange, deleteHabit, deleteEntry, addOrUpdateNote, getNotes, deleteNote, addOrUpdateIdea, getIdeas, deleteIdea } from './services/db';
+import { Habit, HabitEntry, Note, Idea, PlanTask, User } from './types';
+import { initDB, addHabit, getHabits, addOrUpdateEntry, getEntriesByDate, getEntriesByDateRange, deleteHabit, deleteEntry, addOrUpdateNote, getNotes, deleteNote, addOrUpdateIdea, getIdeas, deleteIdea, getCurrentUser, logout } from './services/db';
 import { shouldHabitRunToday, generateId, getWeekStart } from './services/utils';
 import { HabitForm } from './components/HabitForm';
 import { DailyView } from './components/DailyView';
 import { WeekView } from './components/WeekView';
 import { MonthView } from './components/MonthView';
 import { NotesView } from './components/NotesView';
+import { AuthScreen } from './components/AuthScreen';
 
 type ViewType = 'daily' | 'week' | 'month';
 
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -27,8 +30,26 @@ function App() {
   });
   const [isDraggingResize, setIsDraggingResize] = useState(false);
 
-  // Initialize DB and load data
+  // Check if user is already logged in
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        }
+      } catch {
+        // Not logged in
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // Initialize DB and load data (only when user is logged in)
+  useEffect(() => {
+    if (!user) return;
     const init = async () => {
       try {
         await initDB();
@@ -86,7 +107,7 @@ function App() {
     };
 
     init();
-  }, []);
+  }, [user]);
 
   const ensureEntriesExist = async (date: Date, habitsToCheck: Habit[]) => {
     const dayStart = new Date(date);
@@ -357,6 +378,23 @@ function App() {
   // Get today's habits for mobile view
   const todaysHabits = habits.filter((h) => shouldHabitRunToday(h, new Date()));
 
+  const handleLogout = () => {
+    logout();
+    setUser(null);
+    setHabits([]);
+    setEntries([]);
+    setNotes([]);
+    setIdeas([]);
+  };
+
+  if (authChecking) {
+    return <div className="App loading">Loading...</div>;
+  }
+
+  if (!user) {
+    return <AuthScreen onAuth={(u) => setUser(u)} />;
+  }
+
   if (loading) {
     return <div className="App loading">Loading...</div>;
   }
@@ -368,6 +406,10 @@ function App() {
         <nav className="sidebar">
           <div className="logo">
             <h1>Personal Systems</h1>
+            <div className="user-info">
+              <span className="user-email">{user.email}</span>
+              <button className="btn-logout" onClick={handleLogout}>Log out</button>
+            </div>
           </div>
 
           <div className="view-toggle">
@@ -509,9 +551,14 @@ function App() {
         {/* Top Bar: Logo + Notes Button */}
         <div className="mobile-top-bar">
           <div className="mobile-logo">Personal Systems</div>
-          <button className="mobile-notes-btn" onClick={() => setShowNotes(true)}>
-            📝 Notes
-          </button>
+          <div className="mobile-top-actions">
+            <button className="mobile-notes-btn" onClick={() => setShowNotes(true)}>
+              📝 Notes
+            </button>
+            <button className="mobile-logout-btn" onClick={handleLogout}>
+              ↪
+            </button>
+          </div>
         </div>
 
         {/* Calendar / View Area */}
