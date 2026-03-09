@@ -47,6 +47,23 @@ function App() {
     checkAuth();
   }, []);
 
+  // Reset to today's date when the app/window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      const now = new Date();
+      setCurrentDate((prev) => {
+        if (prev.toDateString() !== now.toDateString()) {
+          return now;
+        }
+        return prev;
+      });
+    };
+    window.addEventListener('focus', handleFocus);
+    // Also set to today on mount
+    handleFocus();
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   // Initialize DB and load data (only when user is logged in)
   useEffect(() => {
     if (!user) return;
@@ -162,17 +179,19 @@ function App() {
   };
 
   const handleEntryUpdate = async (entry: HabitEntry) => {
+    // Update UI optimistically first so the entry appears immediately
+    setEntries((prev) => {
+      const exists = prev.some((e) => e.id === entry.id);
+      if (exists) {
+        return prev.map((e) => (e.id === entry.id ? entry : e));
+      }
+      return [...prev, entry];
+    });
     try {
       await addOrUpdateEntry(entry);
-      setEntries((prev) => {
-        const exists = prev.some((e) => e.id === entry.id);
-        if (exists) {
-          return prev.map((e) => (e.id === entry.id ? entry : e));
-        }
-        return [...prev, entry];
-      });
     } catch (error) {
-      console.error('Failed to update entry:', error);
+      console.error('Failed to save entry to database:', error);
+      // Entry is still visible in UI even if DB save fails
     }
   };
 

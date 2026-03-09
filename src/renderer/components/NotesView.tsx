@@ -38,6 +38,10 @@ export const NotesView: React.FC<NotesViewProps> = ({
   const [ideaDescription, setIdeaDescription] = useState('');
   const [ideaCategory, setIdeaCategory] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [editingNote, setEditingNote] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
 
   // AI state
   const [aiLoading, setAiLoading] = useState<string | null>(null); // noteId or 'nudge'
@@ -165,6 +169,36 @@ export const NotesView: React.FC<NotesViewProps> = ({
     setNudges(null);
   };
 
+  const openNote = (note: Note) => {
+    setSelectedNote(note);
+    setEditingNote(false);
+  };
+
+  const closeNote = () => {
+    setSelectedNote(null);
+    setEditingNote(false);
+  };
+
+  const startEditingNote = () => {
+    if (!selectedNote) return;
+    setEditTitle(selectedNote.title);
+    setEditContent(selectedNote.content);
+    setEditingNote(true);
+  };
+
+  const saveEditedNote = async () => {
+    if (!selectedNote || !editTitle.trim()) return;
+    const updated: Note = {
+      ...selectedNote,
+      title: editTitle,
+      content: editContent,
+      updatedAt: new Date(),
+    };
+    await onUpdateNote(updated);
+    setSelectedNote(updated);
+    setEditingNote(false);
+  };
+
   return (
     <div className="notes-view">
       <div className="notes-header">
@@ -224,6 +258,59 @@ export const NotesView: React.FC<NotesViewProps> = ({
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Note Detail Modal */}
+      {selectedNote && (
+        <div className="ai-modal-overlay" onClick={closeNote}>
+          <div className="ai-modal ai-modal-note" onClick={(e) => e.stopPropagation()}>
+            <div className="ai-modal-header">
+              <h3>📝 {editingNote ? 'Edit Note' : selectedNote.title}</h3>
+              <button className="ai-modal-close" onClick={closeNote}>✕</button>
+            </div>
+            <div className="ai-modal-body note-detail-body">
+              {editingNote ? (
+                <div className="note-edit-form">
+                  <input
+                    type="text"
+                    className="note-title-input"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Note title..."
+                  />
+                  <textarea
+                    className="note-content-input note-edit-textarea"
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    placeholder="Note content..."
+                  />
+                </div>
+              ) : (
+                <div className="note-detail-content">
+                  <p className="note-full-text">{selectedNote.content || '(No content)'}</p>
+                </div>
+              )}
+            </div>
+            <div className="note-detail-meta">
+              Created {new Date(selectedNote.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {' · '}
+              Updated {new Date(selectedNote.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div className="ai-modal-footer">
+              {editingNote ? (
+                <>
+                  <button className="ai-btn-cancel" onClick={() => setEditingNote(false)}>Cancel</button>
+                  <button className="ai-btn-confirm" onClick={saveEditedNote}>Save</button>
+                </>
+              ) : (
+                <>
+                  <button className="ai-btn-cancel" onClick={() => { onDeleteNote(selectedNote.id); closeNote(); }}>Delete</button>
+                  <button className="ai-btn-confirm" onClick={startEditingNote}>Edit</button>
+                </>
               )}
             </div>
           </div>
@@ -300,13 +387,13 @@ export const NotesView: React.FC<NotesViewProps> = ({
                 <p className="empty-state">No notes yet. Start capturing your thoughts!</p>
               ) : (
                 notes.map((note) => (
-                  <div key={note.id} className="item-card note-card">
+                  <div key={note.id} className="item-card note-card clickable" onClick={() => openNote(note)}>
                     <div className="item-header">
                       <h4>{note.title}</h4>
                       <div className="item-actions">
                         <button
                           className="btn-analyze"
-                          onClick={() => handleAnalyzePlan(note)}
+                          onClick={(e) => { e.stopPropagation(); handleAnalyzePlan(note); }}
                           disabled={aiLoading === note.id}
                           title="Analyze with Claude AI"
                         >
@@ -314,7 +401,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                         </button>
                         <button
                           className="btn-delete"
-                          onClick={() => onDeleteNote(note.id)}
+                          onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
                           title="Delete"
                         >
                           ✕

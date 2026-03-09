@@ -19,6 +19,13 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
   const [editingTimeValue, setEditingTimeValue] = useState('');
   const [showHabitsList, setShowHabitsList] = useState(false);
 
+  // Quick-add activity state
+  const [quickAddTime, setQuickAddTime] = useState<string | null>(null);
+  const [quickAddTitle, setQuickAddTitle] = useState('');
+  const [quickAddType, setQuickAddType] = useState<'activity' | 'meeting'>('activity');
+  const [quickAddDuration, setQuickAddDuration] = useState('30');
+  const quickAddInputRef = useRef<HTMLInputElement>(null);
+
   // Drag state (works for both mouse and touch)
   const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null);
   const [dragGhostPos, setDragGhostPos] = useState<{ x: number; y: number } | null>(null);
@@ -30,10 +37,32 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
   const dragTimerRef = useRef<number | null>(null);
   const dragStartYRef = useRef<number>(0);
 
+  const hasScrolledRef = useRef(false);
+
   const hours = Array.from({ length: 24 }, (_, i) => (4 + i) % 24);
   const todayEntries = entries.filter(
     (e) => new Date(e.date).toDateString() === date.toDateString()
   );
+
+  // ===== Auto-scroll to current hour on mount =====
+  useEffect(() => {
+    // Only auto-scroll if viewing today's date and haven't scrolled yet for this date
+    const isToday = date.toDateString() === new Date().toDateString();
+    if (!isToday) {
+      hasScrolledRef.current = false;
+      return;
+    }
+    if (hasScrolledRef.current) return;
+
+    const currentHour = new Date().getHours();
+    // Scroll to one hour before current hour for context
+    const scrollToHour = Math.max(0, currentHour - 1);
+    const el = hourRowRefs.current.get(scrollToHour);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      hasScrolledRef.current = true;
+    }
+  }, [date, todayEntries.length]);
 
   // ===== Time from Y position =====
   const getTimeFromPosition = useCallback((clientY: number): string | null => {
@@ -178,7 +207,103 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
     setEditingTimeValue('');
   };
 
+  // ===== Quick-add activity on time slot click =====
+  const handleTimeSlotClick = useCallback((e: React.MouseEvent, hour: number) => {
+    // Don't open if clicking on an existing entry or if dragging
+    const target = e.target as HTMLElement;
+    if (target.closest('.entry-card') || draggingEntryId) return;
+
+    const el = hourRowRefs.current.get(hour);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const yOffset = e.clientY - rect.top;
+    const quarterIndex = Math.min(3, Math.floor((yOffset / rect.height) * 4));
+    const minutes = quarterIndex * 15;
+    const time = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+    setQuickAddTime(time);
+    setQuickAddTitle('');
+    setQuickAddType('activity');
+    setQuickAddDuration('30');
+    setTimeout(() => quickAddInputRef.current?.focus(), 50);
+  }, [draggingEntryId]);
+
+  const handleTimeSlotLongPress = useCallback((hour: number, clientY: number) => {
+    const el = hourRowRefs.current.get(hour);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const yOffset = clientY - rect.top;
+    const quarterIndex = Math.min(3, Math.floor((yOffset / rect.height) * 4));
+    const minutes = quarterIndex * 15;
+    const time = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+    setQuickAddTime(time);
+    setQuickAddTitle('');
+    setQuickAddType('activity');
+    setQuickAddDuration('30');
+    if (navigator.vibrate) navigator.vibrate(30);
+    setTimeout(() => quickAddInputRef.current?.focus(), 50);
+  }, []);
+
+  // Touch long-press for empty time slots
+  const slotLongPressTimer = useRef<number | null>(null);
+  const slotTouchStartY = useRef<number>(0);
+
+  const handleSlotTouchStart = useCallback((e: React.TouchEvent, hour: number) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.entry-card')) return;
+
+    const touch = e.touches[0];
+    slotTouchStartY.current = touch.clientY;
+    slotLongPressTimer.current = window.setTimeout(() => {
+      handleTimeSlotLongPress(hour, touch.clientY);
+    }, 400);
+  }, [handleTimeSlotLongPress]);
+
+  const handleSlotTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (Math.abs(touch.clientY - slotTouchStartY.current) > 10) {
+      if (slotLongPressTimer.current) clearTimeout(slotLongPressTimer.current);
+    }
+  }, []);
+
+  const handleSlotTouchEnd = useCallback(() => {
+    if (slotLongPressTimer.current) clearTimeout(slotLongPressTimer.current);
+  }, []);
+
+  const handleQuickAddSubmit = () => {
+    if (!quickAddTitle.trim() || !quickAddTime) return;
+
+    const prefix = quickAddType === 'meeting' ? 'meeting' : 'activity';
+    const entry: HabitEntry = {
+      id: generateId(),
+      habitId: `${prefix}-${generateId()}`,
+      date: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+      scheduledTime: quickAddTime,
+      completed: false,
+      notes: quickAddTitle.trim() + (parseInt(quickAddDuration) ? ` (${quickAddDuration}min)` : ''),
+    };
+    onEntryUpdate(entry);
+    setQuickAddTime(null);
+    setQuickAddTitle('');
+  };
+
+  const handleQuickAddCancel = () => {
+    setQuickAddTime(null);
+    setQuickAddTitle('');
+  };
+
   const habitsTodayFiltered = habits.filter((h) => shouldHabitRunToday(h, date));
+
+  // Current time state for live indicator (updates every minute)
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const isToday = date.toDateString() === new Date().toDateString();
+
+  useEffect(() => {
+    if (!isToday) return;
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, [isToday]);
 
   // Find which hour the drag is over
   const dragOverHour = dragOverTime ? parseInt(dragOverTime.split(':')[0], 10) : null;
@@ -277,9 +402,26 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
                 key={hour}
                 ref={(el) => { if (el) hourRowRefs.current.set(hour, el); }}
                 className={`hour-row ${dragOverHour === hour ? 'drop-active' : ''}`}
+                onClick={(e) => handleTimeSlotClick(e, hour)}
+                onTouchStart={(e) => handleSlotTouchStart(e, hour)}
+                onTouchMove={(e) => handleSlotTouchMove(e)}
+                onTouchEnd={handleSlotTouchEnd}
               >
                 <div className="hour-label">{String(hour).padStart(2, '0')}:00</div>
                 <div className="hour-entries">
+                  {/* Current time indicator line */}
+                  {isToday && currentTime.getHours() === hour && (
+                    <div
+                      className="current-time-indicator"
+                      style={{
+                        top: `${(currentTime.getMinutes() / 60) * 100}%`,
+                      }}
+                    >
+                      <span className="current-time-label">
+                        {String(currentTime.getHours()).padStart(2, '0')}:{String(currentTime.getMinutes()).padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
                   {/* Drop indicator line */}
                   {dragOverTime && dragOverHour === hour && (
                     <div
@@ -300,19 +442,23 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
                     .map((entry) => {
                       const h = habits.find((hab) => hab.id === entry.habitId);
                       const isPlanTask = entry.habitId.startsWith('plan-');
+                      const isActivity = entry.habitId.startsWith('activity-');
+                      const isMeeting = entry.habitId.startsWith('meeting-');
+                      const isCustomEntry = isPlanTask || isActivity || isMeeting;
                       const isDragging = draggingEntryId === entry.id;
+                      const entryColor = isMeeting ? '#e17055' : isActivity ? '#00b894' : isPlanTask ? '#6c5ce7' : (h?.color || '#ddd');
                       return (
                         <div
                           key={entry.id}
-                          className={`entry-card ${entry.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''} ${isPlanTask ? 'plan-task' : ''}`}
-                          style={{ backgroundColor: isPlanTask ? '#6c5ce7' : (h?.color || '#ddd') }}
+                          className={`entry-card ${entry.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''} ${isCustomEntry ? 'plan-task' : ''}`}
+                          style={{ backgroundColor: entryColor }}
                           onMouseDown={(e) => handleMouseDown(e, entry.id)}
                           onTouchStart={(e) => handleTouchStart(e, entry.id)}
                           onTouchMove={(e) => handleTouchMove(e)}
                           onTouchEnd={(e) => handleTouchEnd(e)}
                         >
                           <div className="entry-drag-handle" title="Drag to reschedule">⠿</div>
-                          <div className="entry-name">{isPlanTask ? (entry.notes || 'Plan Task') : h?.name}</div>
+                          <div className="entry-name">{isCustomEntry ? (entry.notes || (isMeeting ? 'Meeting' : isActivity ? 'Activity' : 'Plan Task')) : h?.name}</div>
                           {editingTimeEntryId === entry.id ? (
                             <input
                               ref={timeInputRef}
@@ -362,6 +508,70 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
         </div>
       </div>
 
+      {/* Quick-add activity modal */}
+      {quickAddTime && (
+        <div className="quick-add-overlay" onClick={handleQuickAddCancel}>
+          <div className="quick-add-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="quick-add-header">
+              <h4>Add to {quickAddTime}</h4>
+              <button className="quick-add-close" onClick={handleQuickAddCancel}>✕</button>
+            </div>
+            <div className="quick-add-type-toggle">
+              <button
+                className={`quick-add-type-btn ${quickAddType === 'activity' ? 'active' : ''}`}
+                onClick={() => setQuickAddType('activity')}
+              >
+                🏃 Activity
+              </button>
+              <button
+                className={`quick-add-type-btn ${quickAddType === 'meeting' ? 'active' : ''}`}
+                onClick={() => setQuickAddType('meeting')}
+              >
+                👥 Meeting
+              </button>
+            </div>
+            <div className="quick-add-body">
+              <input
+                ref={quickAddInputRef}
+                type="text"
+                className="quick-add-input"
+                placeholder={quickAddType === 'meeting' ? 'Meeting name...' : 'What are you doing?'}
+                value={quickAddTitle}
+                onChange={(e) => setQuickAddTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleQuickAddSubmit();
+                  if (e.key === 'Escape') handleQuickAddCancel();
+                }}
+              />
+              <div className="quick-add-duration-row">
+                <label>Duration</label>
+                <div className="quick-add-duration-options">
+                  {['15', '30', '60', '90'].map((d) => (
+                    <button
+                      key={d}
+                      className={`quick-add-dur-btn ${quickAddDuration === d ? 'active' : ''}`}
+                      onClick={() => setQuickAddDuration(d)}
+                    >
+                      {d}m
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="quick-add-footer">
+              <button className="quick-add-cancel" onClick={handleQuickAddCancel}>Cancel</button>
+              <button
+                className="quick-add-submit"
+                onClick={handleQuickAddSubmit}
+                disabled={!quickAddTitle.trim()}
+              >
+                Add {quickAddType === 'meeting' ? 'Meeting' : 'Activity'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Drag ghost that follows cursor/finger */}
       {draggingEntryId && dragGhostPos && draggedEntry && (
         <div
@@ -369,12 +579,20 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
           style={{
             left: dragGhostPos.x,
             top: dragGhostPos.y,
-            backgroundColor: draggedEntry.habitId.startsWith('plan-')
+            backgroundColor: draggedEntry.habitId.startsWith('meeting-')
+              ? '#e17055'
+              : draggedEntry.habitId.startsWith('activity-')
+              ? '#00b894'
+              : draggedEntry.habitId.startsWith('plan-')
               ? '#6c5ce7'
               : (draggedHabit?.color || '#ddd'),
           }}
         >
-          <span>{draggedEntry.habitId.startsWith('plan-') ? (draggedEntry.notes || 'Plan Task') : draggedHabit?.name}</span>
+          <span>
+            {draggedEntry.habitId.startsWith('plan-') || draggedEntry.habitId.startsWith('activity-') || draggedEntry.habitId.startsWith('meeting-')
+              ? (draggedEntry.notes || 'Task')
+              : draggedHabit?.name}
+          </span>
           {dragOverTime && <span className="drag-ghost-time">{dragOverTime}</span>}
         </div>
       )}

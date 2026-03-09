@@ -1,7 +1,7 @@
 import { Habit, HabitEntry, Note, Idea, User } from '../types';
 
 // API URL - uses localhost for development, or window.location.origin for production
-const API_URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:5000';
+const API_URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:5001';
 
 // ===== AUTH TOKEN MANAGEMENT =====
 const AUTH_TOKEN_KEY = 'ps_auth_token';

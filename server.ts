@@ -284,7 +284,7 @@ app.post('/api/auth/google', async (req: Request, res: Response) => {
       return;
     }
 
-    const googleUser = await googleRes.json();
+    const googleUser: any = await googleRes.json();
     const email = googleUser.email?.toLowerCase();
     const name = googleUser.name || googleUser.given_name || '';
 
@@ -356,7 +356,7 @@ app.post('/api/auth/facebook', async (req: Request, res: Response) => {
       return;
     }
 
-    const fbUser = await fbRes.json();
+    const fbUser: any = await fbRes.json();
     const email = fbUser.email?.toLowerCase();
     const name = fbUser.name || '';
 
@@ -484,13 +484,15 @@ app.get('/api/entries/range/:start/:end', authMiddleware, async (req: Request, r
 // POST/UPDATE entry
 app.post('/api/entries', authMiddleware, async (req: Request, res: Response) => {
   const { id, habitId, date, scheduledTime, actualTime, completed, completedAt, notes, createdAt } = req.body;
+  const now = new Date();
+  const createdAtVal = createdAt || now;
   try {
     const result = await pool.query(
       `INSERT INTO entries (id, habit_id, date, scheduled_time, actual_time, completed, completed_at, notes, user_id, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (id) DO UPDATE SET scheduled_time = $4, actual_time = $5, completed = $6, completed_at = $7, notes = $8, updated_at = NOW()
        RETURNING *`,
-      [id, habitId, date, scheduledTime, actualTime || null, completed, completedAt || null, notes || null, req.userId, createdAt, createdAt]
+      [id, habitId, date, scheduledTime, actualTime || null, completed, completedAt || null, notes || null, req.userId, createdAtVal, createdAtVal]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -749,7 +751,7 @@ ${content}`
       return res.status(response.status).json({ error: `Claude API error: ${response.statusText}` });
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     const text = data.content?.[0]?.text || '';
 
     // Parse the JSON from Claude's response
@@ -813,7 +815,7 @@ Respond ONLY with valid JSON array, no other text:
       return res.status(response.status).json({ error: `Claude API error: ${response.statusText}` });
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     const text = data.content?.[0]?.text || '';
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
