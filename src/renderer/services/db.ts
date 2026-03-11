@@ -1,7 +1,7 @@
 import { Habit, HabitEntry, Note, Idea, User } from '../types';
 
-// API URL - uses localhost for development, or window.location.origin for production
-const API_URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:5001';
+// API URL - same origin, served from Express
+const API_URL = '';
 
 // ===== AUTH TOKEN MANAGEMENT =====
 const AUTH_TOKEN_KEY = 'ps_auth_token';
@@ -197,17 +197,21 @@ function setLocal<T>(key: string, data: T[]): void {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-// Check if backend is available
+// Check if backend is available (re-check every 30s)
 let backendAvailable: boolean | null = null;
+let lastBackendCheck = 0;
+const BACKEND_CHECK_INTERVAL = 30000;
 
 async function isBackendUp(): Promise<boolean> {
-  if (backendAvailable !== null) return backendAvailable;
+  const now = Date.now();
+  if (backendAvailable !== null && now - lastBackendCheck < BACKEND_CHECK_INTERVAL) return backendAvailable;
   try {
     const res = await fetch(`${API_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
     backendAvailable = res.ok;
   } catch {
     backendAvailable = false;
   }
+  lastBackendCheck = now;
   return backendAvailable;
 }
 
@@ -265,6 +269,27 @@ export const deleteHabit = async (habitId: string): Promise<void> => {
     // Also clean up entries for this habit
     const entries = getLocal<HabitEntry>(STORAGE_KEYS.entries).filter((e) => e.habitId !== habitId);
     setLocal(STORAGE_KEYS.entries, entries);
+  }
+};
+
+export const updateHabit = async (habit: Habit): Promise<void> => {
+  if (await isBackendUp()) {
+    const response = await fetch(`${API_URL}/api/habits/${habit.id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(habit),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update habit');
+    }
+  } else {
+    const habits = getLocal<Habit>(STORAGE_KEYS.habits);
+    const idx = habits.findIndex((h) => h.id === habit.id);
+    if (idx >= 0) {
+      habits[idx] = habit;
+      setLocal(STORAGE_KEYS.habits, habits);
+    }
   }
 };
 
@@ -359,6 +384,25 @@ export const getEntriesByDateRange = async (startDate: Date, endDate: Date): Pro
 export const getEntriesByHabitAndDate = async (habitId: string, date: Date): Promise<HabitEntry[]> => {
   const entries = await getEntriesByDate(date);
   return entries.filter((e) => e.habitId === habitId);
+};
+
+export const getEntriesByHabitId = async (habitId: string, limit = 60): Promise<HabitEntry[]> => {
+  if (await isBackendUp()) {
+    try {
+      const response = await fetch(`${API_URL}/api/entries/habit/${habitId}?limit=${limit}`, {
+        headers: getAuthHeaders(false),
+      });
+      if (!response.ok) throw new Error('Failed to fetch entries');
+      const data = await response.json();
+      return data.map((e: any) => mapEntry(e));
+    } catch (error) {
+      console.error('Error fetching habit entries:', error);
+      return [];
+    }
+  }
+  return getLocal<HabitEntry>(STORAGE_KEYS.entries)
+    .filter((e) => e.habitId === habitId)
+    .map((e) => mapEntry(e));
 };
 
 // ===== NOTES =====

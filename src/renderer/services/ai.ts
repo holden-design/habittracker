@@ -1,6 +1,6 @@
 import { Habit, AIPlanResult, AIHabitNudge } from '../types';
 
-const API_URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:5000';
+const API_URL = '';
 
 export const analyzePlan = async (content: string, startDate?: string): Promise<AIPlanResult> => {
   const response = await fetch(`${API_URL}/api/ai/analyze-plan`, {

@@ -9,8 +9,8 @@ import jwt from 'jsonwebtoken';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'ps-default-secret-change-in-production';
+const PORT = process.env.PORT || 5001;
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { console.error('FATAL: JWT_SECRET must be set in production'); process.exit(1); return ''; })() : 'ps-dev-secret-local-only');
 
 // Extend Express Request type for auth
 declare global {
@@ -451,7 +451,27 @@ app.delete('/api/habits/:id', authMiddleware, async (req: Request, res: Response
   }
 });
 
-// ==================== ENTRIES API ====================
+// PUT update habit
+app.put('/api/habits/:id', authMiddleware, async (req: Request, res: Response) => {
+  const { name, color, frequency, customDays, targetDurationMinutes } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE habits SET name = $1, color = $2, frequency = $3, custom_days = $4, target_duration_minutes = $5, updated_at = NOW()
+       WHERE id = $6 AND user_id = $7 RETURNING *`,
+      [name, color, frequency, customDays || null, targetDurationMinutes || null, req.params.id, req.userId]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Habit not found' });
+      return;
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update habit' });
+  }
+});
+
+// ==================== ENTRIES API ======================================
 
 // GET entries by date
 app.get('/api/entries/date/:date', authMiddleware, async (req: Request, res: Response) => {
@@ -478,6 +498,21 @@ app.get('/api/entries/range/:start/:end', authMiddleware, async (req: Request, r
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch entries' });
+  }
+});
+
+// GET entries by habit (for streak calculation)
+app.get('/api/entries/habit/:habitId', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 60, 365);
+    const result = await pool.query(
+      'SELECT * FROM entries WHERE habit_id = $1 AND user_id = $2 ORDER BY date DESC LIMIT $3',
+      [req.params.habitId, req.userId, limit]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch habit entries' });
   }
 });
 

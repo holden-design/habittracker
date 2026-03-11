@@ -13,11 +13,56 @@
   flex-shrink: 0;
 }
 
+.daily-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .daily-header h3 {
   margin: 0;
   font-size: 1.75rem;
   color: #262626;
   font-weight: 700;
+}
+
+.daily-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  color: #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.daily-nav-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.daily-today-btn {
+  padding: 6px 14px;
+  border: 1px solid #667eea;
+  background: #f5f3ff;
+  color: #667eea;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 0.5rem;
+}
+
+.daily-today-btn:hover {
+  background: #667eea;
+  color: #fff;
 }
 
 .daily-content {

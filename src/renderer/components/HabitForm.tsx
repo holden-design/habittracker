@@ -6,14 +6,15 @@ import './HabitForm.css';
 interface HabitFormProps {
   onSubmit: (habit: Habit) => void;
   onCancel: () => void;
+  editingHabit?: Habit;
 }
 
-export const HabitForm: React.FC<HabitFormProps> = ({ onSubmit, onCancel }) => {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(getRandomColor());
-  const [frequency, setFrequency] = useState<'daily' | 'weekdays' | 'weekends' | 'custom'>('daily');
-  const [customDays, setCustomDays] = useState<number[]>([]);
-  const [targetDuration, setTargetDuration] = useState<number | undefined>(undefined);
+export const HabitForm: React.FC<HabitFormProps> = ({ onSubmit, onCancel, editingHabit }) => {
+  const [name, setName] = useState(editingHabit?.name || '');
+  const [color, setColor] = useState(editingHabit?.color || getRandomColor());
+  const [frequency, setFrequency] = useState<'daily' | 'weekdays' | 'weekends' | 'custom'>(editingHabit?.frequency || 'daily');
+  const [customDays, setCustomDays] = useState<number[]>(editingHabit?.customDays || []);
+  const [targetDuration, setTargetDuration] = useState<number | undefined>(editingHabit?.targetDurationMinutes);
 
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -23,13 +24,13 @@ export const HabitForm: React.FC<HabitFormProps> = ({ onSubmit, onCancel }) => {
     if (!name.trim()) return;
 
     const habit: Habit = {
-      id: generateId(),
+      id: editingHabit?.id || generateId(),
       name: name.trim(),
       color,
       frequency,
       customDays: frequency === 'custom' ? customDays : undefined,
       targetDurationMinutes: targetDuration,
-      createdAt: new Date(),
+      createdAt: editingHabit?.createdAt || new Date(),
     };
 
     onSubmit(habit);
@@ -40,9 +41,10 @@ export const HabitForm: React.FC<HabitFormProps> = ({ onSubmit, onCancel }) => {
   };
 
   return (
-    <div className="habit-form-overlay">
-      <div className="habit-form">
-        <h2>Add New Habit</h2>
+    <div className="habit-form-overlay" onClick={onCancel}>
+      <div className="habit-form" onClick={(e) => e.stopPropagation()}>
+        <div className="habit-form-drag-handle" />
+        <h2>{editingHabit ? 'Edit Habit' : 'Add New Habit'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Habit Name *</label>
@@ -114,7 +116,7 @@ export const HabitForm: React.FC<HabitFormProps> = ({ onSubmit, onCancel }) => {
               Cancel
             </button>
             <button type="submit" className="btn-submit">
-              Create Habit
+              {editingHabit ? 'Save Changes' : 'Create Habit'}
             </button>
           </div>
         </form>

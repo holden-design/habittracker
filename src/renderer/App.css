@@ -34,6 +34,7 @@ body {
 /* ===== RESPONSIVE VISIBILITY ===== */
 .desktop-only {
   display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
 }
@@ -42,219 +43,320 @@ body {
   display: none;
 }
 
-/* ===== SIDEBAR (DESKTOP) ===== */
-.sidebar {
-  width: 260px;
-  background: #ffffff;
-  padding: 1.5rem;
+/* ===== TOP MENU BAR (DESKTOP) ===== */
+.top-menu-bar {
   display: flex;
-  flex-direction: column;
-  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.06);
-  border-right: 1px solid #e5e5e5;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  height: 52px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e5e5;
   flex-shrink: 0;
+  gap: 1rem;
+  z-index: 100;
 }
 
-.logo h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.6rem;
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.menu-logo {
+  margin: 0;
+  font-size: 1.15rem;
   font-weight: 700;
   background: linear-gradient(135deg, #667eea, #764ba2);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.user-email {
-  font-size: 0.75rem;
-  color: #888;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 140px;
-}
-
-.btn-logout {
-  background: none;
-  border: 1px solid #ddd;
-  color: #888;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  cursor: pointer;
-  transition: all 0.2s;
   white-space: nowrap;
 }
 
-.btn-logout:hover {
-  border-color: #d32f2f;
-  color: #d32f2f;
-}
-
-/* View Toggle (Desktop) */
-.view-toggle {
+.menu-view-toggle {
   display: flex;
   background: #f5f5f5;
-  border-radius: 12px;
-  padding: 4px;
-  gap: 4px;
-  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
 }
 
-.view-btn {
-  flex: 1;
-  padding: 10px 16px;
+.menu-view-btn {
+  padding: 6px 14px;
   border: none;
   background: transparent;
   color: #666;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 10px;
-  transition: all 0.2s ease;
+  border-radius: 6px;
+  transition: all 0.15s ease;
 }
 
-.view-btn:hover {
+.menu-view-btn:hover {
   color: #333;
   background: #e8e8e8;
 }
 
-.view-btn.active {
+.menu-view-btn.active {
   background: #667eea;
   color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.3);
 }
 
-/* Actions */
-.actions {
-  margin-bottom: 1.5rem;
+.menu-center {
+  display: flex;
+  align-items: center;
 }
 
-.btn-primary {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 12px;
+.menu-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  color: #555;
   cursor: pointer;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
 }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+.menu-nav-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
 }
 
-/* Habits Summary */
-.habits-summary {
+.menu-date-today {
+  padding: 6px 14px;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.menu-date-today:hover {
+  background: #f5f5f5;
+}
+
+.menu-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.menu-btn {
+  padding: 6px 14px;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.menu-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.menu-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.menu-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.25rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid #e5e5e5;
+}
+
+.menu-user-email {
+  font-size: 0.75rem;
+  color: #888;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-logout-btn {
+  background: none;
+  border: 1px solid #ddd;
+  color: #888;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.menu-logout-btn:hover {
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+/* ===== DESKTOP MAIN AREA ===== */
+.desktop-main {
   flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ===== HABITS SIDEBAR (slim) ===== */
+.habits-sidebar {
+  width: 220px;
+  background: #fafafa;
+  border-right: 1px solid #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
   overflow-y: auto;
 }
 
-.habits-summary h3 {
-  font-size: 0.95rem;
-  color: #444;
-  margin: 0 0 0.75rem 0;
+.habits-sidebar-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #eee;
 }
 
-.habits-list-mini {
+.habits-sidebar-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.habits-sidebar-list {
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
-.habit-mini {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #fafafa;
-  cursor: default;
-}
-
-.habit-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.habit-mini span {
-  font-size: 0.9rem;
-  color: #333;
-}
-
-/* Desktop Today's Habits Checklist */
-.desktop-todays-habits {
-  padding-top: 1rem;
-  margin-top: 0.75rem;
-  border-top: 1px solid #e5e5e5;
-}
-
-.desktop-todays-habits h3 {
-  font-size: 0.95rem;
-  color: #444;
-  margin: 0 0 0.75rem 0;
-}
-
-.desktop-todays-habits .no-habits-msg {
-  font-size: 0.8rem;
-  color: #999;
-}
-
-.desktop-habit-check {
+.habit-sidebar-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
   border-radius: 8px;
-  cursor: pointer;
   transition: background 0.15s;
-  font-size: 0.85rem;
-  color: #333;
-  margin-bottom: 2px;
+  position: relative;
 }
 
-.desktop-habit-check:hover {
-  background: #f5f5f5;
+.habit-sidebar-item:hover {
+  background: #f0f0f0;
 }
 
-.desktop-habit-check input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+.habit-sidebar-item:hover .habit-sidebar-actions {
+  opacity: 1;
+}
+
+.habit-sidebar-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2.5px solid #ccc;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  accent-color: #4f6ef7;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
 }
 
-.desktop-habit-check-color {
+.habit-sidebar-check.checked {
+  border-color: transparent;
+}
+
+.habit-sidebar-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin: 5px;
 }
 
-.desktop-habit-check span.completed {
+.habit-sidebar-name {
+  font-size: 0.82rem;
+  color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit-sidebar-item.completed .habit-sidebar-name {
   text-decoration: line-through;
   opacity: 0.5;
 }
 
-/* ===== MAIN LAYOUT (DESKTOP) ===== */
-.main-layout {
-  flex: 1;
+.habit-sidebar-actions {
   display: flex;
-  overflow: hidden;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
+.habit-action-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #aaa;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.habit-action-btn:hover {
+  background: #e0e0e0;
+  color: #555;
+}
+
+.habit-action-btn.delete:hover {
+  background: #fee;
+  color: #d32f2f;
+}
+
+.no-habits-msg {
+  font-size: 0.8rem;
+  color: #999;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* ===== MAIN LAYOUT (DESKTOP) ===== */
 .calendar-container {
   flex: 1;
   overflow-y: auto;
@@ -283,6 +385,79 @@ body {
   background: #fafafa;
 }
 
+/* ===== CONFIRMATION DIALOG ===== */
+.confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirm-dialog {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.2rem;
+  color: #262626;
+}
+
+.confirm-dialog p {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.confirm-cancel {
+  padding: 8px 20px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #666;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.confirm-cancel:hover {
+  background: #f5f5f5;
+}
+
+.confirm-delete {
+  padding: 8px 20px;
+  border: none;
+  background: #d32f2f;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.confirm-delete:hover {
+  background: #b71c1c;
+}
+
 /* ================================================
    MOBILE STYLES (max-width: 768px)
    ================================================ */
@@ -309,10 +484,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 30px 16px 12px 16px;
-    background: #ffffff;
-    border-bottom: 1px solid #eee;
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
     flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
 
   .mobile-logo {
@@ -455,21 +636,35 @@ body {
   }
 
   .mobile-checkbox {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 2.5px solid #ccc;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.15s ease;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: white;
+  }
+
+  .mobile-checkbox.is-completed {
+    border-color: transparent;
+    transform: scale(1.08);
   }
 
   .checkmark {
     color: #fff;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     line-height: 1;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .mobile-checkbox.is-completed .checkmark {
+    opacity: 1;
+    transform: scale(1);
   }
 
   .mobile-habit-info {
@@ -494,60 +689,81 @@ body {
     flex-shrink: 0;
   }
 
-  /* ===== MOBILE ADD HABIT BUTTON ===== */
-  .mobile-add-habit {
-    margin: 4px 16px 8px;
-    padding: 12px;
-    border: 2px dashed #ccc;
-    background: transparent;
-    color: #667eea;
-    font-size: 0.95rem;
-    font-weight: 600;
-    border-radius: 12px;
+  /* ===== FLOATING ACTION BUTTON ===== */
+  .mobile-fab {
+    position: fixed;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    font-size: 1.6rem;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.45);
+    z-index: 500;
     transition: all 0.2s ease;
-    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .mobile-add-habit:active {
-    background: #f5f3ff;
-    border-color: #667eea;
-    transform: scale(0.98);
+  .mobile-fab:active {
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   }
 
-  /* ===== MOBILE BOTTOM BAR ===== */
+  /* ===== MOBILE BOTTOM NAV BAR ===== */
   .mobile-bottom-bar {
     display: flex;
-    background: #ffffff;
-    border-top: 1px solid #eee;
-    padding: 6px 16px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
-    gap: 8px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0,0,0,0.08);
+    padding: 8px 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    gap: 0;
     flex-shrink: 0;
   }
 
   .mobile-tab {
     flex: 1;
-    padding: 10px;
+    padding: 6px 4px;
     border: none;
-    background: #f5f5f5;
-    color: #888;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 10px;
+    background: transparent;
+    color: #aaa;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border-radius: 0;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
+    letter-spacing: 0.01em;
   }
 
-  .mobile-tab:active {
-    transform: scale(0.96);
+  .mobile-tab-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-tab:active .mobile-tab-icon {
+    transform: scale(0.88);
   }
 
   .mobile-tab.active {
-    background: #667eea;
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    color: #667eea;
+  }
+
+  .mobile-tab.active .mobile-tab-icon {
+    transform: scale(1.08);
   }
 
   /* ===== MOBILE NOTES MODAL ===== */

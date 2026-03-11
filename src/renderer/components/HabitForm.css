@@ -26,26 +26,41 @@
 
 @media (max-width: 768px) {
   .habit-form-overlay {
-    align-items: flex-start;
+    align-items: flex-end;
     padding: 0;
   }
 
   .habit-form {
     width: 100%;
     max-width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-    padding: 1.5rem;
-    padding-bottom: 2rem;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    padding: 1.25rem 1.5rem;
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    animation: slideUpSheet 0.3s cubic-bezier(0.34, 1.1, 0.64, 1);
   }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+.habit-form-drag-handle {
+  width: 36px;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin: 0 auto 1.25rem auto;
 }
 
 .habit-form h2 {
   margin-top: 0;
   margin-bottom: 1.5rem;
   color: #262626;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
+  text-align: center;
 }
 
 .form-group {
@@ -90,16 +105,16 @@
   width: 44px;
   height: 44px;
   border: 3px solid transparent;
-  border-radius: 8px;
+  border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .color-option.selected {
   border-color: #262626;
-  box-shadow: 0 0 0 2px white, 0 0 0 5px #262626;
-  transform: scale(1.1);
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #262626;
+  transform: scale(1.18);
 }
 
 .color-option:hover {

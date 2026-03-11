@@ -3,6 +3,7 @@ import { Habit, HabitEntry } from '../types';
 import { shouldHabitRunToday, calculateStreak } from '../services/utils';
 import { sendCompletionNotification } from '../services/notifications';
 import { generateId } from '../services/utils';
+import { getEntriesByHabitId } from '../services/db';
 import './DailyView.css';
 
 interface DailyViewProps {
@@ -12,12 +13,16 @@ interface DailyViewProps {
   onEntryUpdate: (entry: HabitEntry) => void;
   onEntryDelete: (entryId: string) => void;
   onDeleteHabit?: (habitId: string) => void;
+  onDateChange?: (date: Date) => void;
 }
 
-export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onEntryUpdate, onEntryDelete, onDeleteHabit }) => {
+export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onEntryUpdate, onEntryDelete, onDeleteHabit, onDateChange }) => {
   const [editingTimeEntryId, setEditingTimeEntryId] = useState<string | null>(null);
   const [editingTimeValue, setEditingTimeValue] = useState('');
   const [showHabitsList, setShowHabitsList] = useState(false);
+
+  // Streak cache — loaded from full history
+  const [streakCache, setStreakCache] = useState<Record<string, number>>({});
 
   // Quick-add activity state
   const [quickAddTime, setQuickAddTime] = useState<string | null>(null);
@@ -63,6 +68,23 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
       hasScrolledRef.current = true;
     }
   }, [date, todayEntries.length]);
+
+  // ===== Load streaks from full history (fix #5) =====
+  useEffect(() => {
+    const loadStreaks = async () => {
+      const cache: Record<string, number> = {};
+      for (const habit of habits) {
+        try {
+          const habitEntries = await getEntriesByHabitId(habit.id, 60);
+          cache[habit.id] = calculateStreak(habitEntries, habit);
+        } catch {
+          cache[habit.id] = 0;
+        }
+      }
+      setStreakCache(cache);
+    };
+    if (habits.length > 0) loadStreaks();
+  }, [habits, entries]);
 
   // ===== Time from Y position =====
   const getTimeFromPosition = useCallback((clientY: number): string | null => {
@@ -315,7 +337,20 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
   return (
     <div className="daily-view">
       <div className="daily-header">
-        <h3>{date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</h3>
+        <div className="daily-header-nav">
+          {onDateChange && (
+            <button className="daily-nav-btn" onClick={() => onDateChange(new Date(date.getTime() - 86400000))}>‹</button>
+          )}
+          <h3>{date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</h3>
+          {onDateChange && (
+            <>
+              <button className="daily-nav-btn" onClick={() => onDateChange(new Date(date.getTime() + 86400000))}>›</button>
+              {date.toDateString() !== new Date().toDateString() && (
+                <button className="daily-today-btn" onClick={() => onDateChange(new Date())}>Today</button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="daily-content">
@@ -325,7 +360,7 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
             <span className={`habits-list-arrow ${showHabitsList ? 'open' : ''}`}>▸</span>
           </h4>
           {showHabitsList && habitsTodayFiltered.map((habit) => {
-            const streak = calculateStreak(entries.filter((e) => e.habitId === habit.id), habit);
+            const streak = streakCache[habit.id] ?? 0;
             const entry = todayEntries.find((e) => e.habitId === habit.id);
 
             return (
