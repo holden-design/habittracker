@@ -498,6 +498,38 @@
   border-color: white;
 }
 
+.entry-date.clickable {
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  opacity: 0.8;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.entry-date.clickable:hover {
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 1;
+}
+
+.entry-date-input {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-family: inherit;
+  outline: none;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.entry-date-input:focus {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: white;
+}
+
 .entry-actions {
   display: flex;
   align-items: center;
@@ -1013,5 +1045,10 @@
 
   .entry-name {
     font-size: 0.75rem;
+  }
+
+  /* Hide habits list on mobile — separate Habits tab handles this */
+  .habits-list {
+    display: none;
   }
 }

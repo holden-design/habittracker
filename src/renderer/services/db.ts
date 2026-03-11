@@ -296,10 +296,16 @@ export const updateHabit = async (habit: Habit): Promise<void> => {
 // ===== ENTRIES =====
 export const addOrUpdateEntry = async (entry: HabitEntry): Promise<void> => {
   if (await isBackendUp()) {
+    // Serialize date as local YYYY-MM-DD to avoid UTC timezone shift
+    const entryDate = entry.date instanceof Date ? entry.date : new Date(entry.date);
+    const payload = {
+      ...entry,
+      date: formatDateForAPI(entryDate),
+    };
     const response = await fetch(`${API_URL}/api/entries`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(entry),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -331,7 +337,10 @@ export const deleteEntry = async (entryId: string): Promise<void> => {
 };
 
 const formatDateForAPI = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 };
 
 export const getEntriesByDate = async (date: Date): Promise<HabitEntry[]> => {

@@ -9,6 +9,8 @@ import { WeekView } from './components/WeekView';
 import { MonthView } from './components/MonthView';
 import { NotesView } from './components/NotesView';
 import { AuthScreen } from './components/AuthScreen';
+import { CalendarWeekView } from './components/CalendarWeekView';
+import { CalendarMonthView } from './components/CalendarMonthView';
 
 type ViewType = 'daily' | 'week' | 'month';
 
@@ -26,6 +28,9 @@ function App() {
   const [confirmDelete, setConfirmDelete] = useState<Habit | null>(null);
   const [showNotes, setShowNotes] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'habits' | 'calendar' | 'notes'>('habits');
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
+  const [mobileHabitsView, setMobileHabitsView] = useState<'day' | 'week' | 'month'>('day');
   const [loading, setLoading] = useState(true);
   const [notesPanelWidth, setNotesPanelWidth] = useState(() => {
     try {
@@ -244,32 +249,80 @@ function App() {
     }
   };
 
-  const handleDateChange = async (date: Date) => {
-    setCurrentDate(date);
-    // Switch to daily view and load entries for the selected date
-    setView('daily');
-    let dayEntries = await getEntriesByDate(date);
-
-    // Auto-create entries for habits that should run on this day
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    for (const habit of habits) {
-      if (shouldHabitRunToday(habit, date)) {
-        const hasEntry = dayEntries.some((e) => e.habitId === habit.id);
-        if (!hasEntry) {
-          const newEntry: HabitEntry = {
-            id: generateId(),
-            habitId: habit.id,
-            date: dayStart,
-            scheduledTime: '09:00',
-            completed: false,
-          };
-          await addOrUpdateEntry(newEntry);
-          dayEntries = [...dayEntries, newEntry];
+  // Helper: load entries for a given view+date and auto-create today's missing entries
+  const loadEntriesForView = async (targetView: ViewType, targetDate: Date): Promise<HabitEntry[]> => {
+    let loaded: HabitEntry[] = [];
+    if (targetView === 'daily') {
+      loaded = await getEntriesByDate(targetDate);
+      // Auto-create entries for habits on this day
+      const dayStart = new Date(targetDate);
+      dayStart.setHours(0, 0, 0, 0);
+      for (const habit of habits) {
+        if (shouldHabitRunToday(habit, targetDate)) {
+          const hasEntry = loaded.some((e) => e.habitId === habit.id);
+          if (!hasEntry) {
+            const newEntry: HabitEntry = {
+              id: generateId(),
+              habitId: habit.id,
+              date: dayStart,
+              scheduledTime: '09:00',
+              completed: false,
+            };
+            await addOrUpdateEntry(newEntry);
+            loaded = [...loaded, newEntry];
+          }
+        }
+      }
+    } else if (targetView === 'week') {
+      const weekStart = getWeekStart(targetDate);
+      const prevWeekStart = new Date(weekStart);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      loaded = await getEntriesByDateRange(prevWeekStart, weekEnd);
+      // Auto-create entries for today if in range
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (today >= prevWeekStart && today <= weekEnd) {
+        for (const habit of habits) {
+          if (shouldHabitRunToday(habit, today)) {
+            const hasEntry = loaded.some((e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString());
+            if (!hasEntry) {
+              const newEntry: HabitEntry = { id: generateId(), habitId: habit.id, date: today, scheduledTime: '09:00', completed: false };
+              await addOrUpdateEntry(newEntry);
+              loaded = [...loaded, newEntry];
+            }
+          }
+        }
+      }
+    } else if (targetView === 'month') {
+      const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      const monthEnd = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+      loaded = await getEntriesByDateRange(monthStart, monthEnd);
+      // Auto-create entries for today if in range
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (today >= monthStart && today <= monthEnd) {
+        for (const habit of habits) {
+          if (shouldHabitRunToday(habit, today)) {
+            const hasEntry = loaded.some((e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString());
+            if (!hasEntry) {
+              const newEntry: HabitEntry = { id: generateId(), habitId: habit.id, date: today, scheduledTime: '09:00', completed: false };
+              await addOrUpdateEntry(newEntry);
+              loaded = [...loaded, newEntry];
+            }
+          }
         }
       }
     }
-    setEntries(dayEntries);
+    return loaded;
+  };
+
+  const handleDateChange = async (date: Date) => {
+    setCurrentDate(date);
+    // Load entries for the current view at the new date (don't force view switch)
+    const loaded = await loadEntriesForView(view, date);
+    setEntries(loaded);
   };
 
   const handleAddNote = async (note: Note) => {
@@ -348,80 +401,8 @@ function App() {
 
   const handleViewChange = async (newView: ViewType) => {
     setView(newView);
-    const dateToUse = newView === 'month' ? new Date(currentDate.getFullYear(), currentDate.getMonth(), 1) : currentDate;
-
-    if (newView === 'daily') {
-      let dayEntries = await getEntriesByDate(dateToUse);
-
-      // Auto-create entries for habits that should run on this day
-      const dayStart = new Date(dateToUse);
-      dayStart.setHours(0, 0, 0, 0);
-      for (const habit of habits) {
-        if (shouldHabitRunToday(habit, dateToUse)) {
-          const hasEntry = dayEntries.some((e) => e.habitId === habit.id);
-          if (!hasEntry) {
-            const newEntry: HabitEntry = {
-              id: generateId(),
-              habitId: habit.id,
-              date: dayStart,
-              scheduledTime: '09:00',
-              completed: false,
-            };
-            await addOrUpdateEntry(newEntry);
-            dayEntries = [...dayEntries, newEntry];
-          }
-        }
-      }
-
-      setEntries(dayEntries);
-    } else if (newView === 'week') {
-      const weekStart = getWeekStart(dateToUse);
-      const prevWeekStart = new Date(weekStart);
-      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      let weekEntries = await getEntriesByDateRange(prevWeekStart, weekEnd);
-
-      // Auto-create entries for today in week view
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (today >= prevWeekStart && today <= weekEnd) {
-        for (const habit of habits) {
-          if (shouldHabitRunToday(habit, today)) {
-            const hasEntry = weekEntries.some((e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString());
-            if (!hasEntry) {
-              const newEntry: HabitEntry = { id: generateId(), habitId: habit.id, date: today, scheduledTime: '09:00', completed: false };
-              await addOrUpdateEntry(newEntry);
-              weekEntries = [...weekEntries, newEntry];
-            }
-          }
-        }
-      }
-
-      setEntries(weekEntries);
-    } else if (newView === 'month') {
-      const monthStart = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), 1);
-      const monthEnd = new Date(dateToUse.getFullYear(), dateToUse.getMonth() + 1, 0);
-      let monthEntries = await getEntriesByDateRange(monthStart, monthEnd);
-
-      // Auto-create entries for today in month view
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (today >= monthStart && today <= monthEnd) {
-        for (const habit of habits) {
-          if (shouldHabitRunToday(habit, today)) {
-            const hasEntry = monthEntries.some((e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString());
-            if (!hasEntry) {
-              const newEntry: HabitEntry = { id: generateId(), habitId: habit.id, date: today, scheduledTime: '09:00', completed: false };
-              await addOrUpdateEntry(newEntry);
-              monthEntries = [...monthEntries, newEntry];
-            }
-          }
-        }
-      }
-
-      setEntries(monthEntries);
-    }
+    const loaded = await loadEntriesForView(newView, currentDate);
+    setEntries(loaded);
   };
 
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -471,6 +452,29 @@ function App() {
 
   // Get today's habits for mobile view
   const todaysHabits = habits.filter((h) => shouldHabitRunToday(h, new Date()));
+
+  // Navigate date for habits week/month sub-views without forcing daily view
+  const handleHabitsNavigate = async (date: Date) => {
+    setCurrentDate(date);
+    const viewMap = { day: 'daily', week: 'week', month: 'month' } as const;
+    const loaded = await loadEntriesForView(viewMap[mobileHabitsView], date);
+    setEntries(loaded);
+  };
+
+  // Change habits sub-view and load entries for the appropriate range
+  const handleMobileHabitsViewChange = async (newView: 'day' | 'week' | 'month') => {
+    setMobileHabitsView(newView);
+    const viewMap = { day: 'daily', week: 'week', month: 'month' } as const;
+    const loaded = await loadEntriesForView(viewMap[newView], currentDate);
+    setEntries(loaded);
+  };
+
+  // Navigate calendar week/month without switching to daily view
+  const handleCalendarNavigate = async (date: Date) => {
+    setCurrentDate(date);
+    const loaded = await loadEntriesForView(view, date);
+    setEntries(loaded);
+  };
 
   const handleLogout = () => {
     logout();
@@ -648,187 +652,268 @@ function App() {
 
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="mobile-only">
-        {/* Top Bar: Logo + Notes Button */}
+        {/* Top Bar */}
         <div className="mobile-top-bar">
           <div className="mobile-logo">Personal Systems</div>
           <div className="mobile-top-actions">
+            {mobileTab === 'habits' && (
+              <div className="mobile-calendar-view-toggle">
+                <button className={`mobile-view-btn ${mobileHabitsView === 'day' ? 'active' : ''}`} onClick={() => handleMobileHabitsViewChange('day')}>Day</button>
+                <button className={`mobile-view-btn ${mobileHabitsView === 'week' ? 'active' : ''}`} onClick={() => handleMobileHabitsViewChange('week')}>Week</button>
+                <button className={`mobile-view-btn ${mobileHabitsView === 'month' ? 'active' : ''}`} onClick={() => handleMobileHabitsViewChange('month')}>Month</button>
+              </div>
+            )}
+            {mobileTab === 'calendar' && (
+              <div className="mobile-calendar-view-toggle">
+                <button className={`mobile-view-btn ${view === 'daily' ? 'active' : ''}`} onClick={() => handleViewChange('daily')}>Day</button>
+                <button className={`mobile-view-btn ${view === 'week' ? 'active' : ''}`} onClick={() => handleViewChange('week')}>Week</button>
+                <button className={`mobile-view-btn ${view === 'month' ? 'active' : ''}`} onClick={() => handleViewChange('month')}>Month</button>
+              </div>
+            )}
             <button className="mobile-logout-btn" onClick={handleLogout}>
-              ↪
+              Log out
             </button>
           </div>
         </div>
 
-        {/* Calendar / View Area */}
-        <div className="mobile-calendar">
-          {view === 'daily' && (
-            <DailyView
-              date={currentDate}
-              habits={habits}
-              entries={entries}
-              onEntryUpdate={handleEntryUpdate}
-              onEntryDelete={handleEntryDelete}
-              onDeleteHabit={handleDeleteHabit}
-            />
-          )}
-          {view === 'week' && (
-            <WeekView
-              startDate={getWeekStart(currentDate)}
-              habits={habits}
-              entries={entries}
-              onDateSelect={handleDateChange}
-              onEntryUpdate={handleEntryUpdate}
-            />
-          )}
-          {view === 'month' && (
-            <MonthView
-              year={currentDate.getFullYear()}
-              month={currentDate.getMonth()}
-              habits={habits}
-              entries={entries}
-              onDateSelect={handleDateChange}
-              onEntryUpdate={handleEntryUpdate}
-            />
-          )}
-        </div>
+        {/* Main Content Area */}
+        <div className="mobile-content">
+          {/* HABITS TAB */}
+          {mobileTab === 'habits' && (
+            <div className="mobile-habits-view">
+              <div className="mobile-habits-date">
+                <button className="mobile-date-nav-btn" onClick={() => {
+                  if (mobileHabitsView === 'day') handleDateChange(new Date(currentDate.getTime() - 86400000));
+                  else if (mobileHabitsView === 'week') handleHabitsNavigate(new Date(currentDate.getTime() - 7 * 86400000));
+                  else handleHabitsNavigate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+                }}>‹</button>
+                <button className="mobile-date-today-btn" onClick={() => {
+                  if (mobileHabitsView === 'day') handleDateChange(new Date());
+                  else handleHabitsNavigate(new Date());
+                }}>
+                  {mobileHabitsView === 'day' && currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  {mobileHabitsView === 'week' && (() => {
+                    const ws = getWeekStart(currentDate);
+                    const we = new Date(ws); we.setDate(we.getDate() + 6);
+                    return `${ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${we.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                  })()}
+                  {mobileHabitsView === 'month' && currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </button>
+                <button className="mobile-date-nav-btn" onClick={() => {
+                  if (mobileHabitsView === 'day') handleDateChange(new Date(currentDate.getTime() + 86400000));
+                  else if (mobileHabitsView === 'week') handleHabitsNavigate(new Date(currentDate.getTime() + 7 * 86400000));
+                  else handleHabitsNavigate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+                }}>›</button>
+              </div>
+              {mobileHabitsView === 'day' && (
+              <>
+              <div className="mobile-habit-list">
+                {todaysHabits.length === 0 && (
+                  <p className="mobile-no-habits">No habits scheduled for today</p>
+                )}
+                {todaysHabits.map((habit) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const entry = entries.find(
+                    (e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString()
+                  );
+                  const isCompleted = entry?.completed ?? false;
 
-        {/* Habit List with Checkboxes - only in daily view */}
-        {view === 'daily' && (
-        <div className="mobile-habit-list">
-          <h3 className="mobile-habit-list-title">Today's Habits</h3>
-          {todaysHabits.length === 0 && (
-            <p className="mobile-no-habits">No habits scheduled for today</p>
-          )}
-          {todaysHabits.map((habit) => {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const entry = entries.find(
-              (e) => e.habitId === habit.id && new Date(e.date).toDateString() === today.toDateString()
-            );
-            const isCompleted = entry?.completed ?? false;
-
-            return (
-              <div key={habit.id} className="mobile-habit-swipe-container">
-                <div className="mobile-habit-delete-bg">
-                  <button
-                    className="mobile-habit-delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteHabit(habit.id);
-                    }}
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-                <div
-                  className="mobile-habit-item"
-                  data-habit-id={habit.id}
-                  onTouchStart={(e) => {
-                    const touch = e.touches[0];
-                    const el = e.currentTarget;
-                    el.dataset.startX = String(touch.clientX);
-                    el.dataset.currentX = '0';
-                  }}
-                  onTouchMove={(e) => {
-                    const touch = e.touches[0];
-                    const el = e.currentTarget;
-                    const startX = parseFloat(el.dataset.startX || '0');
-                    const diff = touch.clientX - startX;
-                    const clampedDiff = Math.max(-100, Math.min(0, diff));
-                    el.style.transform = `translateX(${clampedDiff}px)`;
-                    el.dataset.currentX = String(clampedDiff);
-                  }}
-                  onTouchEnd={(e) => {
-                    const el = e.currentTarget;
-                    const currentX = parseFloat(el.dataset.currentX || '0');
-                    if (currentX < -50) {
-                      el.style.transform = 'translateX(-100px)';
-                      el.dataset.swiped = 'true';
-                    } else {
-                      el.style.transform = 'translateX(0)';
-                      el.dataset.swiped = 'false';
-                    }
-                  }}
-                  onClick={(e) => {
-                    const el = e.currentTarget;
-                    if (el.dataset.swiped === 'true') {
-                      el.dataset.swiped = 'false';
-                      return;
-                    }
-                    handleMobileToggle(habit);
-                  }}
-                >
-                  <div className="mobile-habit-check">
-                    <div
-                      className={`mobile-checkbox ${isCompleted ? 'is-completed' : ''}`}
-                      style={{
-                        borderColor: isCompleted ? habit.color : '#ddd',
-                        backgroundColor: isCompleted ? habit.color : 'white',
-                      }}
-                    >
-                      <span className="checkmark">✓</span>
+                  return (
+                    <div key={habit.id} className="mobile-habit-swipe-container">
+                      <div className="mobile-habit-delete-bg">
+                        <button
+                          className="mobile-habit-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteHabit(habit.id);
+                          }}
+                        >
+                          🗑 Delete
+                        </button>
+                      </div>
+                      <div
+                        className="mobile-habit-item"
+                        data-habit-id={habit.id}
+                        onTouchStart={(e) => {
+                          const touch = e.touches[0];
+                          const el = e.currentTarget;
+                          el.dataset.startX = String(touch.clientX);
+                          el.dataset.currentX = '0';
+                        }}
+                        onTouchMove={(e) => {
+                          const touch = e.touches[0];
+                          const el = e.currentTarget;
+                          const startX = parseFloat(el.dataset.startX || '0');
+                          const diff = touch.clientX - startX;
+                          const clampedDiff = Math.max(-100, Math.min(0, diff));
+                          el.style.transform = `translateX(${clampedDiff}px)`;
+                          el.dataset.currentX = String(clampedDiff);
+                        }}
+                        onTouchEnd={(e) => {
+                          const el = e.currentTarget;
+                          const currentX = parseFloat(el.dataset.currentX || '0');
+                          if (currentX < -50) {
+                            el.style.transform = 'translateX(-100px)';
+                            el.dataset.swiped = 'true';
+                          } else {
+                            el.style.transform = 'translateX(0)';
+                            el.dataset.swiped = 'false';
+                          }
+                        }}
+                        onClick={(e) => {
+                          const el = e.currentTarget;
+                          if (el.dataset.swiped === 'true') {
+                            el.dataset.swiped = 'false';
+                            return;
+                          }
+                          handleMobileToggle(habit);
+                        }}
+                      >
+                        <div className="mobile-habit-check">
+                          <div
+                            className={`mobile-checkbox ${isCompleted ? 'is-completed' : ''}`}
+                            style={{
+                              borderColor: isCompleted ? habit.color : '#ddd',
+                              backgroundColor: isCompleted ? habit.color : 'white',
+                            }}
+                          >
+                            <span className="checkmark">✓</span>
+                          </div>
+                        </div>
+                        <div className="mobile-habit-info">
+                          <span className="mobile-habit-name" style={{ color: isCompleted ? '#999' : '#333' }}>
+                            {habit.name}
+                          </span>
+                          {entry && editingTimeId === entry.id ? (
+                            <input
+                              type="time"
+                              className="mobile-habit-time-input"
+                              defaultValue={entry.scheduledTime}
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              onBlur={(e) => {
+                                const newTime = e.target.value;
+                                if (newTime && newTime !== entry.scheduledTime) {
+                                  handleEntryUpdate({ ...entry, scheduledTime: newTime });
+                                }
+                                setEditingTimeId(null);
+                              }}
+                              onChange={(e) => {
+                                const newTime = e.target.value;
+                                if (newTime) {
+                                  handleEntryUpdate({ ...entry, scheduledTime: newTime });
+                                }
+                              }}
+                            />
+                          ) : entry?.scheduledTime ? (
+                            <span
+                              className="mobile-habit-time"
+                              style={{ color: isCompleted ? '#bbb' : '#888' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (entry) setEditingTimeId(entry.id);
+                              }}
+                            >
+                              {entry.scheduledTime}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div
+                          className="mobile-habit-color-dot"
+                          style={{ backgroundColor: habit.color }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="mobile-habit-info">
-                    <span className="mobile-habit-name" style={{ color: isCompleted ? '#999' : '#333' }}>
-                      {habit.name}
-                    </span>
-                  </div>
-                  <div
-                    className="mobile-habit-color-dot"
-                    style={{ backgroundColor: habit.color }}
+                  );
+                })}
+              </div>
+              {/* Completion summary */}
+              {todaysHabits.length > 0 && (
+                <div className="mobile-habits-summary">
+                  {(() => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const completed = todaysHabits.filter((h) => {
+                      const entry = entries.find(
+                        (e) => e.habitId === h.id && new Date(e.date).toDateString() === today.toDateString()
+                      );
+                      return entry?.completed;
+                    }).length;
+                    return `${completed} of ${todaysHabits.length} complete`;
+                  })()}
+                </div>
+              )}
+              </>
+              )}
+
+              {/* Week sub-view: habit tracking grid */}
+              {mobileHabitsView === 'week' && (
+                <div className="mobile-habits-grid">
+                  <WeekView
+                    startDate={getWeekStart(currentDate)}
+                    habits={habits}
+                    entries={entries}
+                    onDateSelect={(date) => { setMobileHabitsView('day'); handleDateChange(date); }}
+                    onEntryUpdate={handleEntryUpdate}
                   />
                 </div>
-              </div>
-            );
-          })}
-        </div>
-        )}
+              )}
 
-        {/* Add Habit Button */}
-        <button className="mobile-fab" onClick={() => setShowForm(true)}>
-          +
-        </button>
+              {/* Month sub-view: habit tracking grid */}
+              {mobileHabitsView === 'month' && (
+                <div className="mobile-habits-grid">
+                  <MonthView
+                    year={currentDate.getFullYear()}
+                    month={currentDate.getMonth()}
+                    habits={habits}
+                    entries={entries}
+                    onDateSelect={(date) => { setMobileHabitsView('day'); handleDateChange(date); }}
+                    onEntryUpdate={handleEntryUpdate}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Bottom Tab Bar: Day / Week / Month */}
-        <div className="mobile-bottom-bar">
-          <button
-            className={`mobile-tab ${view === 'daily' ? 'active' : ''}`}
-            onClick={() => handleViewChange('daily')}
-          >
-            <span className="mobile-tab-icon">📅</span>
-            Day
-          </button>
-          <button
-            className={`mobile-tab ${view === 'week' ? 'active' : ''}`}
-            onClick={() => handleViewChange('week')}
-          >
-            <span className="mobile-tab-icon">📆</span>
-            Week
-          </button>
-          <button
-            className={`mobile-tab ${view === 'month' ? 'active' : ''}`}
-            onClick={() => handleViewChange('month')}
-          >
-            <span className="mobile-tab-icon">🗓</span>
-            Month
-          </button>
-          <button
-            className={`mobile-tab ${showNotes ? 'active' : ''}`}
-            onClick={() => setShowNotes(true)}
-          >
-            <span className="mobile-tab-icon">📝</span>
-            Notes
-          </button>
-        </div>
+          {/* CALENDAR TAB */}
+          {mobileTab === 'calendar' && (
+            <div className="mobile-calendar">
+              {view === 'daily' && (
+                <DailyView
+                  date={currentDate}
+                  habits={habits}
+                  entries={entries}
+                  onEntryUpdate={handleEntryUpdate}
+                  onEntryDelete={handleEntryDelete}
+                  onDeleteHabit={handleDeleteHabit}
+                  onDateChange={handleDateChange}
+                />
+              )}
+              {view === 'week' && (
+                <CalendarWeekView
+                  currentDate={currentDate}
+                  entries={entries}
+                  habits={habits}
+                  onDateSelect={handleDateChange}
+                  onWeekChange={handleCalendarNavigate}
+                />
+              )}
+              {view === 'month' && (
+                <CalendarMonthView
+                  currentDate={currentDate}
+                  entries={entries}
+                  habits={habits}
+                  onDateSelect={handleDateChange}
+                  onMonthChange={handleCalendarNavigate}
+                />
+              )}
+            </div>
+          )}
 
-        {/* Notes Modal (slides in when tapped) */}
-        {showNotes && (
-          <div className="mobile-notes-modal" onClick={() => setShowNotes(false)}>
-            <div className="mobile-notes-content" onClick={(e) => e.stopPropagation()}>
-              <div className="mobile-notes-header">
-                <h2>Notes & Ideas</h2>
-                <button className="mobile-notes-close" onClick={() => setShowNotes(false)}>✕</button>
-              </div>
+          {/* NOTES TAB */}
+          {mobileTab === 'notes' && (
+            <div className="mobile-notes-inline">
               <NotesView
                 notes={notes}
                 ideas={ideas}
@@ -843,8 +928,40 @@ function App() {
                 onAddCalendarTasks={handleAddCalendarTasks}
               />
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Add Habit Button - only on habits tab day view */}
+        {mobileTab === 'habits' && mobileHabitsView === 'day' && (
+          <button className="mobile-fab" onClick={() => setShowForm(true)}>
+            +
+          </button>
         )}
+
+        {/* Bottom Tab Bar */}
+        <div className="mobile-bottom-bar">
+          <button
+            className={`mobile-tab ${mobileTab === 'habits' ? 'active' : ''}`}
+            onClick={() => setMobileTab('habits')}
+          >
+            <span className="mobile-tab-icon">✅</span>
+            Habits
+          </button>
+          <button
+            className={`mobile-tab ${mobileTab === 'calendar' ? 'active' : ''}`}
+            onClick={() => setMobileTab('calendar')}
+          >
+            <span className="mobile-tab-icon">📅</span>
+            Calendar
+          </button>
+          <button
+            className={`mobile-tab ${mobileTab === 'notes' ? 'active' : ''}`}
+            onClick={() => setMobileTab('notes')}
+          >
+            <span className="mobile-tab-icon">📝</span>
+            Notes
+          </button>
+        </div>
       </div>
 
       {/* Shared: Habit Form Modal */}

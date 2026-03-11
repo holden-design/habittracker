@@ -525,7 +525,7 @@ app.post('/api/entries', authMiddleware, async (req: Request, res: Response) => 
     const result = await pool.query(
       `INSERT INTO entries (id, habit_id, date, scheduled_time, actual_time, completed, completed_at, notes, user_id, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       ON CONFLICT (id) DO UPDATE SET scheduled_time = $4, actual_time = $5, completed = $6, completed_at = $7, notes = $8, updated_at = NOW()
+       ON CONFLICT (id) DO UPDATE SET date = $3, scheduled_time = $4, actual_time = $5, completed = $6, completed_at = $7, notes = $8, updated_at = NOW()
        RETURNING *`,
       [id, habitId, date, scheduledTime, actualTime || null, completed, completedAt || null, notes || null, req.userId, createdAtVal, createdAtVal]
     );

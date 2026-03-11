@@ -19,6 +19,7 @@ interface DailyViewProps {
 export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onEntryUpdate, onEntryDelete, onDeleteHabit, onDateChange }) => {
   const [editingTimeEntryId, setEditingTimeEntryId] = useState<string | null>(null);
   const [editingTimeValue, setEditingTimeValue] = useState('');
+  const [editingDateEntryId, setEditingDateEntryId] = useState<string | null>(null);
   const [showHabitsList, setShowHabitsList] = useState(false);
 
   // Streak cache — loaded from full history
@@ -227,6 +228,24 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
     }
     setEditingTimeEntryId(null);
     setEditingTimeValue('');
+  };
+
+  // ===== Date change handler for moving entries across dates =====
+  const formatDateForInput = (d: Date): string => {
+    const dt = d instanceof Date ? d : new Date(d);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const handleDateChange = (entry: HabitEntry, newDateStr: string) => {
+    if (!newDateStr) return;
+    const [y, m, d] = newDateStr.split('-').map(Number);
+    const newDate = new Date(y, m - 1, d);
+    newDate.setHours(0, 0, 0, 0);
+    onEntryUpdate({ ...entry, date: newDate });
+    setEditingDateEntryId(null);
   };
 
   // ===== Quick-add activity on time slot click =====
@@ -472,7 +491,10 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
                     .filter((e) => {
                       const time = e.actualTime || e.scheduledTime;
                       const [h] = time.split(':').map(Number);
-                      return h === hour;
+                      if (h !== hour) return false;
+                      // Only show non-habit entries (activities, meetings, plan tasks) on the calendar
+                      const isHabitEntry = habits.some((hab) => hab.id === e.habitId);
+                      return !isHabitEntry;
                     })
                     .map((entry) => {
                       const h = habits.find((hab) => hab.id === entry.habitId);
@@ -516,6 +538,30 @@ export const DailyView: React.FC<DailyViewProps> = ({ date, habits, entries, onE
                             >
                               {entry.actualTime || entry.scheduledTime}
                             </div>
+                          )}
+                          {isCustomEntry && (
+                            editingDateEntryId === entry.id ? (
+                              <input
+                                type="date"
+                                className="entry-date-input"
+                                defaultValue={formatDateForInput(entry.date)}
+                                autoFocus
+                                onClick={(ev) => ev.stopPropagation()}
+                                onChange={(ev) => handleDateChange(entry, ev.target.value)}
+                                onBlur={() => setEditingDateEntryId(null)}
+                                onKeyDown={(ev) => {
+                                  if (ev.key === 'Escape') setEditingDateEntryId(null);
+                                }}
+                              />
+                            ) : (
+                              <div
+                                className="entry-date clickable"
+                                onClick={(ev) => { ev.stopPropagation(); setEditingDateEntryId(entry.id); }}
+                                title="Click to move to another date"
+                              >
+                                {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </div>
+                            )
                           )}
                           <div className="entry-actions">
                             <button
